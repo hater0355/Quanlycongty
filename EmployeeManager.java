@@ -204,6 +204,19 @@ public class EmployeeManager {
             if (rs.next()) {
                 Time in = rs.getTime("check_in");
                 Time out = rs.getTime("check_out");
+                
+                // ĐÃ THÊM: TỰ ĐỘNG CHECK-OUT LÚC 23:59 NẾU QUÊN CỦA NGÀY HÔM TRƯỚC
+                if (in != null && out == null && date.isBefore(LocalDate.now())) {
+                    out = java.sql.Time.valueOf("23:59:00");
+                    String updateSql = "UPDATE timekeeping SET check_out = ? WHERE employee_id = ? AND work_date = ?";
+                    try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+                        updateStmt.setTime(1, out);
+                        updateStmt.setString(2, empId);
+                        updateStmt.setDate(3, java.sql.Date.valueOf(date));
+                        updateStmt.executeUpdate();
+                    } catch (Exception ignored) {}
+                }
+
                 String strIn = (in != null) ? in.toString().substring(0, 5) : null;   
                 String strOut = (out != null) ? out.toString().substring(0, 5) : null;
                 return new String[]{strIn, strOut};
@@ -510,11 +523,14 @@ public class EmployeeManager {
     // 10. BÁO CÁO NGHỈ PHÉP VÀ VẮNG MẶT CỦA SẾP
     // =========================================================
     
-    // ĐÃ THÊM: Sếp duyệt hoặc từ chối đơn xin nghỉ
+    // ĐÃ SỬA LỖI: Nhận diện chính xác từ khóa xin nghỉ
     public void reviewLeaveRequest(String empId, LocalDate date, boolean isApproved) {
         String currentShift = getSchedule(empId, date);
-        if (currentShift.startsWith("Chờ duyệt nghỉ: ")) {
-            String reason = currentShift.replace("Chờ duyệt nghỉ: ", "");
+        if (currentShift != null && (currentShift.startsWith("Chờ duyệt nghỉ: ") || currentShift.startsWith("Xin nghỉ: "))) {
+            // Lọc lấy đúng lý do nhân viên đã nhập
+            String reason = currentShift.replace("Chờ duyệt nghỉ: ", "").replace("Xin nghỉ: ", "");
+            
+            // Cập nhật lại lịch thành Đã duyệt hoặc Bị từ chối
             String newShift = isApproved ? "Đã duyệt nghỉ: " + reason : "Từ chối nghỉ: " + reason;
             saveSchedule(empId, date, newShift);
         }
@@ -528,14 +544,16 @@ public class EmployeeManager {
             String shift = getSchedule(e.getId(), date);
             String[] time = getAttendanceRecord(e.getId(), date);
             
-            if (shift.startsWith("Chờ duyệt nghỉ")) {
-                report.add(new String[]{e.getId(), e.getName(), "Chờ duyệt", shift.replace("Chờ duyệt nghỉ: ", "")});
+            // Bắt chuẩn cả 2 định dạng chữ cũ và mới
+            if (shift.startsWith("Chờ duyệt nghỉ") || shift.startsWith("Xin nghỉ")) {
+                String reason = shift.replace("Chờ duyệt nghỉ: ", "").replace("Xin nghỉ: ", "");
+                report.add(new String[]{e.getId(), e.getName(), "Chờ duyệt", reason});
             } else if (shift.startsWith("Đã duyệt nghỉ")) {
                 report.add(new String[]{e.getId(), e.getName(), "Nghỉ CÓ phép", shift.replace("Đã duyệt nghỉ: ", "")});
             } else if (shift.startsWith("Từ chối nghỉ")) {
                 report.add(new String[]{e.getId(), e.getName(), "Bị từ chối nghỉ", shift.replace("Từ chối nghỉ: ", "")});
             } else if (!shift.equals("Nghỉ") && !shift.equals("Chưa đăng ký")) {
-                // Có lịch làm việc nhưng không check-in (chỉ tính nếu ngày đó đã hoặc đang diễn ra)
+                // Có lịch làm việc nhưng không check-in
                 if (time[0] == null && !date.isAfter(LocalDate.now())) {
                     report.add(new String[]{e.getId(), e.getName(), "Nghỉ KHÔNG phép", "Bỏ ca: " + shift});
                 }
@@ -543,4 +561,4 @@ public class EmployeeManager {
         }
         return report;
     }
-}   
+}
