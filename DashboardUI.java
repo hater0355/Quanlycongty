@@ -40,6 +40,7 @@ public class DashboardUI extends JFrame {
     private JTable tblXetDuyet; 
 
     private CustomPieChart pieChart;
+    private CustomBarChart barChart; 
 
     private LocalDate currentMonday = LocalDate.now().with(DayOfWeek.MONDAY); 
     private JLabel lblWeekDisplay; 
@@ -49,6 +50,11 @@ public class DashboardUI extends JFrame {
 
     private LocalDate currentAbsenceDate = LocalDate.now();
     private DefaultTableModel vangMatModel;
+    
+    private javax.swing.table.TableRowSorter<DefaultTableModel> sorterNhanVien;
+
+    private JTable tblTasks;
+    private DefaultTableModel taskModel;
 
     public DashboardUI() {
         setTitle("Hệ Thống Quản Lý Lương & Chấm Công - Dành cho Giám Đốc");
@@ -76,9 +82,11 @@ public class DashboardUI extends JFrame {
         mainCardPanel.add(createNhanVienPanel(), "NhanVien");
         mainCardPanel.add(createPhongBanPanel(), "PhongBan"); 
         mainCardPanel.add(createChamCongPanel(), "ChamCong");
+        mainCardPanel.add(createKPIPanel(), "KPI"); 
         mainCardPanel.add(createTinhLuongPanel(), "TinhLuong");
         mainCardPanel.add(createThongBaoPanel(), "ThongBao");
         mainCardPanel.add(createVangMatPanel(), "VangMat");
+        mainCardPanel.add(createGiaoViecPanel(), "GiaoViec");
 
         root.add(mainCardPanel, BorderLayout.CENTER);
         add(root);
@@ -115,8 +123,16 @@ public class DashboardUI extends JFrame {
                 if (currentSelection != null) cbSelectDepartment.setSelectedItem(currentSelection);
                 updatePhongBanTable();
             }
+            
+            if(taskModel != null) {
+                taskModel.setRowCount(0);
+                for(Task t : EmployeeManager.getInstance().getAllTasksByAdmin()) {
+                    taskModel.addRow(new Object[]{t.getId(), t.getTitle(), t.getDescription(), t.getAssigneeId(), t.getDeadline().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), t.getStatus()});
+                }
+            }
 
             if(pieChart != null) pieChart.repaint();
+            if(barChart != null) barChart.repaint();
             loadEmployeesIntoChamCong();
             loadPendingEmployees(); 
         } finally { isRefreshing = false; }
@@ -139,7 +155,9 @@ public class DashboardUI extends JFrame {
         sidebar.add(createMenuBtn("Nhân viên", "NhanVien", 2));
         sidebar.add(createMenuBtn("Phòng ban", "PhongBan", 5)); 
         sidebar.add(createMenuBtn("Chấm công", "ChamCong", 3));
+        sidebar.add(createMenuBtn("Đánh giá KPI", "KPI", 10)); 
         sidebar.add(createMenuBtn("Tính lương", "TinhLuong", 4));
+        sidebar.add(createMenuBtn("Giao việc (Tasks)", "GiaoViec", 9)); 
         sidebar.add(createMenuBtn("Thông báo chung", "ThongBao", 7));
         sidebar.add(createMenuBtn("Quản lý Vắng mặt", "VangMat", 8));
 
@@ -216,25 +234,304 @@ public class DashboardUI extends JFrame {
         btn.addActionListener(e -> { refreshData(); cardLayout.show(mainCardPanel, cardName); }); return btn;
     }
 
-    private JPanel createTongQuanPanel() {
-        JPanel p = new JPanel(new BorderLayout(20, 20)); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        JPanel topPanel = new JPanel(new BorderLayout(0, 20)); topPanel.setOpaque(false);
-        JLabel title = new JLabel("Bảng điều khiển"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(TEXT_PRIMARY); topPanel.add(title, BorderLayout.NORTH);
-        JPanel cardsPanel = new JPanel(new GridLayout(1, 2, 20, 0)); cardsPanel.setOpaque(false);
-        lblTotalEmployees = new JLabel("0"); lblTotalSalary = new JLabel("0 VNĐ");
-        cardsPanel.add(createStatCard("Tổng nhân viên (Đã duyệt)", lblTotalEmployees, new Color(30, 58, 138), 1)); cardsPanel.add(createStatCard("Tổng quỹ lương cơ bản", lblTotalSalary, new Color(120, 53, 15), 2));
-        topPanel.add(cardsPanel, BorderLayout.CENTER); p.add(topPanel, BorderLayout.NORTH);
-        JPanel chartContainer = new JPanel(new BorderLayout(0, 15)); chartContainer.setOpaque(false); chartContainer.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
-        JLabel chartTitle = new JLabel("Cơ cấu quỹ lương theo nhân viên (Lương cơ bản)"); chartTitle.setFont(new Font("Tahoma", Font.BOLD, 18)); chartTitle.setForeground(TEXT_SECONDARY); chartContainer.add(chartTitle, BorderLayout.NORTH);
-        pieChart = new CustomPieChart(); chartContainer.add(pieChart, BorderLayout.CENTER); p.add(chartContainer, BorderLayout.CENTER);
+    private JPanel createKPIPanel() {
+        JPanel p = new JPanel(new BorderLayout(20, 20));
+        p.setOpaque(false);
+        p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        
+        JLabel title = new JLabel("Đánh giá Hiệu suất (KPI) hàng tháng");
+        title.setFont(new Font("Tahoma", Font.BOLD, 26));
+        title.setForeground(TEXT_PRIMARY);
+        p.add(title, BorderLayout.NORTH);
+        
+        JPanel content = new JPanel(new GridLayout(1, 2, 20, 0));
+        content.setOpaque(false);
+        
+        JPanel formPanel = new JPanel(new BorderLayout());
+        formPanel.setOpaque(false);
+        JPanel form = new JPanel(new GridLayout(6, 1, 5, 5));
+        form.setBackground(BG_CARD);
+        form.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        
+        JComboBox<String> cbEmp = new JComboBox<>();
+        Runnable refreshCombo = () -> {
+            cbEmp.removeAllItems();
+            for(Employee e : EmployeeManager.getInstance().getAllEmployees()) {
+                cbEmp.addItem(e.getId() + " - " + e.getName());
+            }
+        };
+        
+        JPanel panelDate = new JPanel(new GridLayout(1, 2, 10, 0));
+        panelDate.setOpaque(false);
+        JComboBox<Integer> cbMonth = new JComboBox<>();
+        for(int i=1; i<=12; i++) cbMonth.addItem(i);
+        cbMonth.setSelectedItem(LocalDate.now().getMonthValue());
+        
+        JComboBox<Integer> cbYear = new JComboBox<>();
+        int curYear = LocalDate.now().getYear();
+        for(int i=curYear-2; i<=curYear+2; i++) cbYear.addItem(i);
+        cbYear.setSelectedItem(curYear);
+        panelDate.add(cbMonth); panelDate.add(cbYear);
+        
+        JTextField txtScore = new RoundedTextField("100");
+        JTextField txtNote = new RoundedTextField("");
+        
+        form.add(new JLabel("Chọn Nhân viên:")); form.add(cbEmp);
+        form.add(new JLabel("Tháng / Năm cần đánh giá:")); form.add(panelDate);
+        form.add(new JLabel("Điểm KPI (Tối đa 100):")); form.add(txtScore);
+        form.add(new JLabel("Nhận xét / Lý do:")); form.add(txtNote);
+        
+        JButton btnSave = new RoundedButton("Lưu điểm KPI");
+        btnSave.setBackground(new Color(16, 185, 129));
+        btnSave.setForeground(Color.WHITE);
+        btnSave.setFont(new Font("Tahoma", Font.BOLD, 14));
+        form.add(new JLabel()); form.add(btnSave);
+        
+        formPanel.add(form, BorderLayout.NORTH);
+        
+        JPanel guidePanel = new JPanel(new BorderLayout());
+        guidePanel.setBackground(BG_CARD);
+        guidePanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JLabel guideTitle = new JLabel("🏆 Quy định Thưởng theo KPI:");
+        guideTitle.setFont(new Font("Tahoma", Font.BOLD, 18));
+        guideTitle.setForeground(COLOR_ORANGE);
+        guideTitle.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
+        
+        JTextArea txtGuide = new JTextArea(
+            "• Từ 90 - 100 điểm:\n   Thưởng xuất sắc: 1,000,000 VNĐ\n\n" +
+            "• Từ 80 - 89 điểm:\n   Thưởng tốt: 500,000 VNĐ\n\n" +
+            "• Từ 70 - 79 điểm:\n   Thưởng đạt: 200,000 VNĐ\n\n" +
+            "• Dưới 70 điểm:\n   Cần cố gắng: Không có thưởng"
+        );
+        txtGuide.setEditable(false); txtGuide.setOpaque(false); 
+        txtGuide.setFont(new Font("Tahoma", Font.PLAIN, 15));
+        txtGuide.setForeground(TEXT_PRIMARY);
+        
+        guidePanel.add(guideTitle, BorderLayout.NORTH);
+        guidePanel.add(txtGuide, BorderLayout.CENTER);
+        
+        content.add(formPanel);
+        content.add(guidePanel);
+        p.add(content, BorderLayout.CENTER);
+        
+        btnSave.addActionListener(e -> {
+            if(cbEmp.getSelectedIndex() == -1) return;
+            String empId = cbEmp.getSelectedItem().toString().split(" - ")[0];
+            int m = (int) cbMonth.getSelectedItem();
+            int y = (int) cbYear.getSelectedItem();
+            try {
+                int score = Integer.parseInt(txtScore.getText().trim());
+                if(score < 0 || score > 100) {
+                    JOptionPane.showMessageDialog(this, "Điểm KPI phải nằm trong khoảng từ 0 đến 100!");
+                    return;
+                }
+                EmployeeManager.getInstance().saveKPI(empId, m, y, score, txtNote.getText().trim());
+                JOptionPane.showMessageDialog(this, "✅ Đã lưu điểm KPI thành công!\n(Tiền thưởng sẽ tự động được cộng vào phần Tính Lương)");
+            } catch(Exception ex) {
+                JOptionPane.showMessageDialog(this, "Điểm số không hợp lệ! Vui lòng nhập số.");
+            }
+        });
+        
+        SwingUtilities.invokeLater(refreshCombo);
+        
         return p;
     }
 
+    private JPanel createTongQuanPanel() {
+        JPanel p = new JPanel(new BorderLayout(20, 20)); 
+        p.setOpaque(false); 
+        p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        
+        JPanel topPanel = new JPanel(new BorderLayout(0, 20)); 
+        topPanel.setOpaque(false);
+        JLabel title = new JLabel("Bảng điều khiển"); 
+        title.setFont(new Font("Tahoma", Font.BOLD, 26)); 
+        title.setForeground(TEXT_PRIMARY); 
+        topPanel.add(title, BorderLayout.NORTH);
+        
+        JPanel cardsPanel = new JPanel(new GridLayout(1, 2, 20, 0)); 
+        cardsPanel.setOpaque(false);
+        lblTotalEmployees = new JLabel("0"); lblTotalSalary = new JLabel("0 VNĐ");
+        cardsPanel.add(createStatCard("Tổng nhân viên (Đã duyệt)", lblTotalEmployees, new Color(30, 58, 138), 1)); 
+        cardsPanel.add(createStatCard("Tổng quỹ lương cơ bản", lblTotalSalary, new Color(120, 53, 15), 2));
+        topPanel.add(cardsPanel, BorderLayout.CENTER); 
+        p.add(topPanel, BorderLayout.NORTH);
+        
+        JPanel chartContainer = new JPanel(new GridLayout(1, 2, 20, 0)); 
+        chartContainer.setOpaque(false); 
+        chartContainer.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+        
+        JPanel piePanel = new JPanel(new BorderLayout(0, 15)); 
+        piePanel.setOpaque(false);
+        JLabel pieTitle = new JLabel("Cơ cấu quỹ lương (VNĐ)"); 
+        pieTitle.setFont(new Font("Tahoma", Font.BOLD, 18)); 
+        pieTitle.setForeground(TEXT_SECONDARY);
+        pieChart = new CustomPieChart(); 
+        piePanel.add(pieTitle, BorderLayout.NORTH); 
+        piePanel.add(pieChart, BorderLayout.CENTER);
+        
+        JPanel barPanel = new JPanel(new BorderLayout(0, 15)); 
+        barPanel.setOpaque(false);
+        JLabel barTitle = new JLabel("Nhân sự theo Phòng ban"); 
+        barTitle.setFont(new Font("Tahoma", Font.BOLD, 18)); 
+        barTitle.setForeground(TEXT_SECONDARY);
+        barChart = new CustomBarChart(); 
+        barPanel.add(barTitle, BorderLayout.NORTH); 
+        barPanel.add(barChart, BorderLayout.CENTER);
+
+        chartContainer.add(piePanel);
+        chartContainer.add(barPanel);
+        p.add(chartContainer, BorderLayout.CENTER);
+        
+        return p;
+    }
+
+    private JPanel createGiaoViecPanel() {
+        JPanel p = new JPanel(new BorderLayout(0, 20)); 
+        p.setOpaque(false); 
+        p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        
+        JPanel header = new JPanel(new BorderLayout()); 
+        header.setOpaque(false);
+        JLabel title = new JLabel("Quản lý Công việc (Giao việc cho Nhân viên)"); 
+        title.setFont(new Font("Tahoma", Font.BOLD, 22)); 
+        title.setForeground(TEXT_PRIMARY);
+        header.add(title, BorderLayout.WEST);
+
+        JPanel btnGrp = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0)); 
+        btnGrp.setOpaque(false);
+        JButton btnAdd = new RoundedButton("➕ Giao việc mới"); 
+        btnAdd.setBackground(new Color(16, 185, 129)); 
+        btnAdd.setForeground(Color.WHITE);
+        JButton btnDel = new RoundedButton("🗑 Xóa"); 
+        btnDel.setBackground(new Color(239, 68, 68)); 
+        btnDel.setForeground(Color.WHITE);
+
+        btnAdd.addActionListener(e -> showCreateTaskDialog());
+        btnDel.addActionListener(e -> {
+            int r = tblTasks.getSelectedRow();
+            if (r == -1) { JOptionPane.showMessageDialog(this, "Vui lòng chọn công việc để xóa!"); return; }
+            int taskId = (int) tblTasks.getValueAt(r, 0);
+            if(JOptionPane.showConfirmDialog(this, "Xóa công việc này?", "Xác nhận", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                EmployeeManager.getInstance().deleteTask(taskId);
+                refreshData();
+            }
+        });
+
+        btnGrp.add(btnAdd); 
+        btnGrp.add(btnDel);
+        header.add(btnGrp, BorderLayout.EAST);
+        p.add(header, BorderLayout.NORTH);
+
+        taskModel = new DefaultTableModel(new String[]{"Mã CV", "Tiêu đề", "Mô tả", "Giao cho (Mã NV)", "Hạn chót", "Trạng thái"}, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
+        };
+        tblTasks = new JTable(taskModel); 
+        tblTasks.setRowHeight(35);
+        tblTasks.getTableHeader().setReorderingAllowed(false); // CHẶN DI CHUYỂN CỘT
+        p.add(new JScrollPane(tblTasks), BorderLayout.CENTER);
+
+        return p;
+    }
+
+    private void showCreateTaskDialog() {
+        JDialog d = new JDialog(this, "Giao việc mới", true);
+        d.setSize(500, 400); 
+        d.setLocationRelativeTo(this); 
+        d.setLayout(new BorderLayout());
+        d.getContentPane().setBackground(BG_CARD);
+        
+        JPanel form = new JPanel(new GridLayout(4, 2, 10, 15)); 
+        form.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        form.setOpaque(false);
+        
+        JTextField txtTitle = new RoundedTextField(20);
+        JTextArea txtDesc = new JTextArea(3, 20); 
+        txtDesc.setLineWrap(true); 
+        txtDesc.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
+        
+        JComboBox<String> cbAssignee = new JComboBox<>();
+        cbAssignee.setBackground(Color.WHITE);
+        for(Employee emp : EmployeeManager.getInstance().getAllEmployees()) {
+            cbAssignee.addItem(emp.getId() + " - " + emp.getName());
+        }
+        
+        JTextField txtDeadline = new RoundedTextField(LocalDate.now().plusDays(3).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), 20);
+
+        JLabel lbl1 = new JLabel("Tiêu đề công việc:"); lbl1.setForeground(TEXT_PRIMARY); lbl1.setFont(new Font("Tahoma", Font.BOLD, 12));
+        JLabel lbl2 = new JLabel("Mô tả chi tiết:"); lbl2.setForeground(TEXT_PRIMARY); lbl2.setFont(new Font("Tahoma", Font.BOLD, 12));
+        JLabel lbl3 = new JLabel("Giao cho Nhân viên:"); lbl3.setForeground(TEXT_PRIMARY); lbl3.setFont(new Font("Tahoma", Font.BOLD, 12));
+        JLabel lbl4 = new JLabel("Hạn chót (dd/MM/yyyy):"); lbl4.setForeground(TEXT_PRIMARY); lbl4.setFont(new Font("Tahoma", Font.BOLD, 12));
+
+        form.add(lbl1); form.add(txtTitle);
+        form.add(lbl2); form.add(new JScrollPane(txtDesc));
+        form.add(lbl3); form.add(cbAssignee);
+        form.add(lbl4); form.add(txtDeadline);
+
+        JButton btnSave = new RoundedButton("Giao việc"); 
+        btnSave.setBackground(COLOR_ORANGE); 
+        btnSave.setForeground(Color.WHITE);
+        btnSave.setFont(new Font("Tahoma", Font.BOLD, 14));
+        btnSave.setPreferredSize(new Dimension(150, 40));
+        
+        btnSave.addActionListener(e -> {
+            try {
+                String title = txtTitle.getText().trim();
+                String desc = txtDesc.getText().trim();
+                if(title.isEmpty() || cbAssignee.getSelectedIndex() == -1) { 
+                    JOptionPane.showMessageDialog(d, "Vui lòng nhập tiêu đề và chọn người nhận!"); 
+                    return; 
+                }
+                String assigneeFull = (String) cbAssignee.getSelectedItem();
+                String assigneeId = assigneeFull.split(" - ")[0];
+                LocalDate deadline = LocalDate.parse(txtDeadline.getText().trim(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                
+                EmployeeManager.getInstance().addTask(title, desc, assigneeId, deadline);
+                JOptionPane.showMessageDialog(d, "✅ Giao việc thành công!");
+                refreshData(); 
+                d.dispose();
+            } catch (Exception ex) { 
+                JOptionPane.showMessageDialog(d, "Ngày hạn chót không hợp lệ (Vui lòng nhập đúng định dạng: dd/MM/yyyy)!"); 
+            }
+        });
+        
+        d.add(form, BorderLayout.CENTER);
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER)); 
+        bottom.setOpaque(false);
+        bottom.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+        bottom.add(btnSave); 
+        d.add(bottom, BorderLayout.SOUTH);
+        d.setVisible(true);
+    }
+
     private JPanel createNhanVienPanel() {
-        JPanel p = new JPanel(new BorderLayout()); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(30,30,30,30));
-        JPanel header = new JPanel(new BorderLayout()); header.setOpaque(false);
-        JLabel title = new JLabel("Danh sách nhân viên"); title.setFont(new Font("Tahoma", Font.BOLD, 22)); title.setForeground(TEXT_PRIMARY);
-        JPanel btnGrp = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0)); btnGrp.setOpaque(false);
+        JPanel p = new JPanel(new BorderLayout()); 
+        p.setOpaque(false); 
+        p.setBorder(BorderFactory.createEmptyBorder(30,30,30,30));
+        
+        JPanel header = new JPanel(new BorderLayout()); 
+        header.setOpaque(false);
+        JLabel title = new JLabel("Danh sách nhân viên"); 
+        title.setFont(new Font("Tahoma", Font.BOLD, 22)); 
+        title.setForeground(TEXT_PRIMARY);
+        
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        searchPanel.setOpaque(false);
+        JLabel lblSearch = new JLabel("🔍 Tìm kiếm: ");
+        lblSearch.setForeground(TEXT_PRIMARY);
+        lblSearch.setFont(new Font("Tahoma", Font.BOLD, 14));
+        
+        JTextField txtSearch = new RoundedTextField(20);
+        searchPanel.add(lblSearch);
+        searchPanel.add(txtSearch);
+        
+        JPanel westHeader = new JPanel(new BorderLayout(0, 10));
+        westHeader.setOpaque(false);
+        westHeader.add(title, BorderLayout.NORTH);
+        westHeader.add(searchPanel, BorderLayout.CENTER);
+
+        JPanel btnGrp = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0)); 
+        btnGrp.setOpaque(false);
         
         JButton btnImport = new RoundedButton("📥 Nhập Excel"); btnImport.setBackground(new Color(16, 185, 129)); btnImport.setForeground(Color.WHITE);
         JButton btnExport = new RoundedButton("📤 Xuất Excel"); btnExport.setBackground(new Color(59, 130, 246)); btnExport.setForeground(Color.WHITE);
@@ -242,16 +539,46 @@ public class DashboardUI extends JFrame {
         JButton btnEdit = new RoundedButton("✏ Sửa lương"); btnEdit.setBackground(new Color(75, 85, 99)); btnEdit.setForeground(Color.WHITE);
         JButton btnDel = new RoundedButton("🗑 Xóa"); btnDel.setBackground(new Color(239, 68, 68)); btnDel.setForeground(Color.WHITE);
 
-        btnImport.addActionListener(e -> importFromExcel()); btnExport.addActionListener(e -> exportToExcel()); btnEdit.addActionListener(e -> showEditSalaryDialog()); btnDel.addActionListener(e -> deleteEmployee());
+        btnImport.addActionListener(e -> importFromExcel()); 
+        btnExport.addActionListener(e -> exportToExcel()); 
+        btnEdit.addActionListener(e -> showEditSalaryDialog()); 
+        btnDel.addActionListener(e -> deleteEmployee());
         btnSchedule.addActionListener(e -> {
             int r = tblNhanVien.getSelectedRow();
             if (r == -1) { JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 nhân viên trong bảng để xem lịch!"); return; }
-            String id = tblNhanVien.getValueAt(r, 0).toString(); String name = tblNhanVien.getValueAt(r, 1).toString(); showEmployeeScheduleDialog(id, name);
+            int modelRow = tblNhanVien.convertRowIndexToModel(r);
+            String id = tblNhanVien.getModel().getValueAt(modelRow, 0).toString(); 
+            String name = tblNhanVien.getModel().getValueAt(modelRow, 1).toString(); 
+            showEmployeeScheduleDialog(id, name);
         });
 
         btnGrp.add(btnImport); btnGrp.add(btnExport); btnGrp.add(btnSchedule); btnGrp.add(btnEdit); btnGrp.add(btnDel); 
-        header.add(title, BorderLayout.WEST); header.add(btnGrp, BorderLayout.EAST); p.add(header, BorderLayout.NORTH);
-        tblNhanVien = new JTable(new DefaultTableModel(new String[]{"Mã NV", "Họ tên", "Phòng ban", "Chức vụ", "Lương cơ bản"}, 0)); tblNhanVien.setRowHeight(35); tblNhanVien.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); p.add(new JScrollPane(tblNhanVien), BorderLayout.CENTER);
+        
+        header.add(westHeader, BorderLayout.WEST); 
+        header.add(btnGrp, BorderLayout.EAST); 
+        p.add(header, BorderLayout.NORTH);
+
+        DefaultTableModel model = new DefaultTableModel(new String[]{"Mã NV", "Họ tên", "Phòng ban", "Chức vụ", "Lương cơ bản"}, 0);
+        tblNhanVien = new JTable(model); 
+        tblNhanVien.setRowHeight(35); 
+        tblNhanVien.getTableHeader().setReorderingAllowed(false); // CHẶN DI CHUYỂN CỘT
+        tblNhanVien.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); 
+        
+        sorterNhanVien = new javax.swing.table.TableRowSorter<>(model);
+        tblNhanVien.setRowSorter(sorterNhanVien);
+
+        txtSearch.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { search(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { search(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { search(); }
+            private void search() {
+                String text = txtSearch.getText().trim();
+                if (text.isEmpty()) { sorterNhanVien.setRowFilter(null); } 
+                else { sorterNhanVien.setRowFilter(javax.swing.RowFilter.regexFilter("(?i)" + text)); }
+            }
+        });
+
+        p.add(new JScrollPane(tblNhanVien), BorderLayout.CENTER);
         return p;
     }
 
@@ -335,9 +662,6 @@ public class DashboardUI extends JFrame {
         }
     }
 
-    // =======================================================
-    // PHẦN QUẢN LÝ PHÒNG BAN: ĐÃ THÊM NÚT "XEM CHI TIẾT PB"
-    // =======================================================
     private JPanel createPhongBanPanel() {
         JPanel p = new JPanel(new BorderLayout(0, 20)); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
         JPanel header = new JPanel(new BorderLayout()); header.setOpaque(false);
@@ -353,13 +677,12 @@ public class DashboardUI extends JFrame {
         JButton btnChangePos = new RoundedButton("✏ Đổi Phòng / Chức vụ"); btnChangePos.setBackground(new Color(59, 130, 246)); btnChangePos.setForeground(Color.WHITE);
         btnChangePos.addActionListener(e -> showChangeDeptPosDialog());
 
-        // Nút xem chi tiết phòng ban (Tự động lọc Trưởng phòng, Phó phòng, Nhân viên)
         JButton btnViewDepDetails = new RoundedButton("👁 Xem chi tiết PB"); 
-        btnViewDepDetails.setBackground(new Color(139, 92, 246)); // Màu tím
+        btnViewDepDetails.setBackground(new Color(139, 92, 246)); 
         btnViewDepDetails.setForeground(Color.WHITE);
         btnViewDepDetails.addActionListener(e -> showDepartmentDetailsDialog());
 
-        controls.add(lbl); 
+        controls.add(lbl); cbSelectDepartment.addItem("-- Tất cả phòng ban --");
         controls.add(cbSelectDepartment); 
         controls.add(btnAddDep); 
         controls.add(btnChangePos); 
@@ -367,7 +690,9 @@ public class DashboardUI extends JFrame {
         header.add(controls, BorderLayout.SOUTH);
         p.add(header, BorderLayout.NORTH);
 
-        tblNhanVienTheoPhong = new JTable(new DefaultTableModel(new String[]{"Mã NV", "Họ tên", "Chức vụ", "Lương cơ bản"}, 0)); tblNhanVienTheoPhong.setRowHeight(35); p.add(new JScrollPane(tblNhanVienTheoPhong), BorderLayout.CENTER);
+        tblNhanVienTheoPhong = new JTable(new DefaultTableModel(new String[]{"Mã NV", "Họ tên", "Chức vụ", "Lương cơ bản"}, 0)); tblNhanVienTheoPhong.setRowHeight(35); 
+        tblNhanVienTheoPhong.getTableHeader().setReorderingAllowed(false); // CHẶN DI CHUYỂN CỘT
+        p.add(new JScrollPane(tblNhanVienTheoPhong), BorderLayout.CENTER);
         return p;
     }
 
@@ -397,7 +722,6 @@ public class DashboardUI extends JFrame {
         d.add(new JLabel()); d.add(btnSave); d.setVisible(true);
     }
 
-    // ĐÃ THÊM: Hộp thoại xem danh sách chi tiết của Phòng ban
     private void showDepartmentDetailsDialog() {
         String selectedDep = (String) cbSelectDepartment.getSelectedItem();
         if (selectedDep == null || selectedDep.equals("-- Tất cả phòng ban --")) {
@@ -433,22 +757,12 @@ public class DashboardUI extends JFrame {
         html += "<h2 style='color: #f59e0b; margin-bottom: 5px;'>🏢 Phòng ban: " + selectedDep + "</h2>";
         html += "<p style='margin-top: 0px;'><i>Tổng số: " + count + " thành viên</i></p>";
         
-        if (truongPhong.length() > 0) {
-            html += "<h3 style='color: #dc2626; margin-bottom: 2px;'>👑 Trưởng phòng:</h3>" + truongPhong.toString();
-        }
-        if (phoPhong.length() > 0) {
-            html += "<h3 style='color: #2563eb; margin-bottom: 2px;'>⭐ Phó phòng:</h3>" + phoPhong.toString();
-        }
-        if (nhanVien.length() > 0) {
-            html += "<h3 style='color: #10b981; margin-bottom: 2px;'>👥 Nhân viên:</h3>" + nhanVien.toString();
-        }
+        if (truongPhong.length() > 0) { html += "<h3 style='color: #dc2626; margin-bottom: 2px;'>👑 Trưởng phòng:</h3>" + truongPhong.toString(); }
+        if (phoPhong.length() > 0) { html += "<h3 style='color: #2563eb; margin-bottom: 2px;'>⭐ Phó phòng:</h3>" + phoPhong.toString(); }
+        if (nhanVien.length() > 0) { html += "<h3 style='color: #10b981; margin-bottom: 2px;'>👥 Nhân viên:</h3>" + nhanVien.toString(); }
         html += "</body></html>";
 
-        JLabel lblInfo = new JLabel(html);
-        JScrollPane scroll = new JScrollPane(lblInfo);
-        scroll.setBorder(null);
-        scroll.setPreferredSize(new Dimension(350, 400));
-
+        JLabel lblInfo = new JLabel(html); JScrollPane scroll = new JScrollPane(lblInfo); scroll.setBorder(null); scroll.setPreferredSize(new Dimension(350, 400));
         JOptionPane.showMessageDialog(this, scroll, "Cơ Cấu Phòng Ban", JOptionPane.PLAIN_MESSAGE);
     }
 
@@ -473,7 +787,9 @@ public class DashboardUI extends JFrame {
         JButton btnSend = new RoundedButton("🚀 Gửi toàn công ty"); btnSend.setBackground(new Color(16, 185, 129)); btnSend.setForeground(Color.WHITE); btnSend.setFont(new Font("Tahoma", Font.BOLD, 14)); btnSend.setCursor(new Cursor(Cursor.HAND_CURSOR));
         formPanel.add(lblInstruct, BorderLayout.NORTH); formPanel.add(new JScrollPane(txtMsg), BorderLayout.CENTER); formPanel.add(btnSend, BorderLayout.SOUTH);
         JPanel historyPanel = new JPanel(new BorderLayout()); historyPanel.setOpaque(false); JLabel lblHistory = new JLabel("Lịch sử đã gửi:"); lblHistory.setFont(new Font("Tahoma", Font.BOLD, 16)); lblHistory.setForeground(TEXT_SECONDARY);
-        DefaultTableModel model = new DefaultTableModel(new String[]{"Ngày gửi", "Nội dung"}, 0); JTable tblHistory = new JTable(model); tblHistory.setRowHeight(30);
+        DefaultTableModel model = new DefaultTableModel(new String[]{"Ngày gửi", "Nội dung"}, 0); 
+        JTable tblHistory = new JTable(model); tblHistory.setRowHeight(30);
+        tblHistory.getTableHeader().setReorderingAllowed(false); // CHẶN DI CHUYỂN CỘT
         List<String[]> notifs = EmployeeManager.getInstance().getNotifications(EmployeeManager.getInstance().getCurrentUsername());
         for(String[] n : notifs) { model.addRow(new Object[]{n[0], n[1]}); }
         historyPanel.add(lblHistory, BorderLayout.NORTH); historyPanel.add(new JScrollPane(tblHistory), BorderLayout.CENTER);
@@ -497,6 +813,7 @@ public class DashboardUI extends JFrame {
 
         vangMatModel = new DefaultTableModel(new String[]{"Mã NV", "Họ Tên", "Tình trạng", "Lý do / Ca bỏ lỡ"}, 0);
         JTable tbl = new JTable(vangMatModel); tbl.setRowHeight(35);
+        tbl.getTableHeader().setReorderingAllowed(false); // CHẶN DI CHUYỂN CỘT
 
         Runnable fetchAbsence = () -> {
             vangMatModel.setRowCount(0);
@@ -545,7 +862,9 @@ public class DashboardUI extends JFrame {
         LocalDate sunday = currentMonday.plusDays(6); lblWeekDisplay.setText("Tuần: " + currentMonday.format(fullFormatter) + " - " + sunday.format(fullFormatter));
         String[] columns = {"Mã NV", "Họ tên", "T2 (" + currentMonday.format(formatter) + ")", "T3 (" + currentMonday.plusDays(1).format(formatter) + ")", "T4 (" + currentMonday.plusDays(2).format(formatter) + ")", "T5 (" + currentMonday.plusDays(3).format(formatter) + ")", "T6 (" + currentMonday.plusDays(4).format(formatter) + ")", "T7 (" + currentMonday.plusDays(5).format(formatter) + ")", "CN (" + currentMonday.plusDays(6).format(formatter) + ")"};
         chamCongModel = new DefaultTableModel(columns, 0) { @Override public boolean isCellEditable(int row, int column) { return false; } };
-        tblChamCong.setModel(chamCongModel); tblChamCong.getTableHeader().setFont(new Font("Tahoma", Font.BOLD, 12)); loadEmployeesIntoChamCong();
+        tblChamCong.setModel(chamCongModel); 
+        tblChamCong.getTableHeader().setReorderingAllowed(false); // CHẶN DI CHUYỂN CỘT
+        tblChamCong.getTableHeader().setFont(new Font("Tahoma", Font.BOLD, 12)); loadEmployeesIntoChamCong();
     }
 
     private void loadEmployeesIntoChamCong() {
@@ -561,22 +880,44 @@ public class DashboardUI extends JFrame {
 
     private JPanel createTinhLuongPanel() {
         JPanel p = new JPanel(new BorderLayout()); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        JLabel title = new JLabel("Quyết toán lương (Tự động tính Làm bù / Tăng ca)"); title.setFont(new Font("Tahoma", Font.BOLD, 22)); title.setForeground(TEXT_PRIMARY); p.add(title, BorderLayout.NORTH);
+        JLabel title = new JLabel("Quyết toán lương (Đã tích hợp tự động thưởng KPI)"); title.setFont(new Font("Tahoma", Font.BOLD, 22)); title.setForeground(TEXT_PRIMARY); p.add(title, BorderLayout.NORTH);
         JPanel content = new JPanel(new GridBagLayout()); content.setOpaque(false); GridBagConstraints gbc = new GridBagConstraints(); gbc.insets = new Insets(20, 0, 0, 20); gbc.fill = GridBagConstraints.BOTH;
         JPanel form = new JPanel(new GridLayout(13, 1, 5, 5)); form.setBackground(BG_CARD); form.setBorder(BorderFactory.createEmptyBorder(15,15,15,15)); cbNhanVienTinhLuong = new JComboBox<>();
         JPanel panelThangNam = new JPanel(new GridLayout(1, 2, 10, 0)); panelThangNam.setOpaque(false);
         JComboBox<Integer> cbMonth = new JComboBox<>(); for(int i=1; i<=12; i++) cbMonth.addItem(i); cbMonth.setSelectedItem(LocalDate.now().getMonthValue());
         JComboBox<Integer> cbYear = new JComboBox<>(); int curYear = LocalDate.now().getYear(); for(int i=curYear-2; i<=curYear+2; i++) cbYear.addItem(i); cbYear.setSelectedItem(curYear);
         panelThangNam.add(cbMonth); panelThangNam.add(cbYear);
-        JTextField txtCongT2T6 = new RoundedTextField("0"); JTextField txtCongCuoiTuan = new RoundedTextField("0"); JTextField txtBonus = new RoundedTextField("0");
+        JTextField txtCongT2T6 = new RoundedTextField("0"); JTextField txtCongCuoiTuan = new RoundedTextField("0"); 
+        JTextField txtBonus = new RoundedTextField("0"); txtBonus.setForeground(new Color(16, 185, 129));
         JButton btnCal = new RoundedButton("Tính toán & Xuất"); btnCal.setBackground(COLOR_ORANGE); btnCal.setForeground(Color.WHITE);
-        form.add(new JLabel("Nhân viên:")); form.add(cbNhanVienTinhLuong); form.add(new JLabel("Chọn Tháng / Năm:")); form.add(panelThangNam); form.add(new JLabel("Tổng ngày làm T2-T6:")); form.add(txtCongT2T6); form.add(new JLabel("Tổng ngày làm T7-CN:")); form.add(txtCongCuoiTuan); form.add(new JLabel("Phụ cấp/Thưởng:")); form.add(txtBonus); form.add(new JLabel("")); form.add(btnCal);
+        form.add(new JLabel("Nhân viên:")); form.add(cbNhanVienTinhLuong); form.add(new JLabel("Chọn Tháng / Năm:")); form.add(panelThangNam); form.add(new JLabel("Tổng ngày làm T2-T6:")); form.add(txtCongT2T6); form.add(new JLabel("Tổng ngày làm T7-CN:")); form.add(txtCongCuoiTuan); form.add(new JLabel("Phụ cấp/Thưởng KPI (VNĐ):")); form.add(txtBonus); form.add(new JLabel("")); form.add(btnCal);
         gbc.gridx = 0; gbc.weightx = 0.3; content.add(form, gbc);
-        DefaultTableModel m = new DefaultTableModel(new String[]{"Nhân viên", "Tháng", "Công Hệ số 1", "Công Hệ số 2", "Thực lĩnh"}, 0); JTable t = new JTable(m); t.setRowHeight(30); gbc.gridx = 1; gbc.weightx = 0.7; content.add(new JScrollPane(t), gbc);
-        Runnable autoFillDays = () -> {
-            if (isRefreshing) return; int idx = cbNhanVienTinhLuong.getSelectedIndex(); if(idx == -1) return; Employee emp = EmployeeManager.getInstance().getAllEmployees().get(idx); int month = (Integer) cbMonth.getSelectedItem(); int year = (Integer) cbYear.getSelectedItem(); int[] counts = EmployeeManager.getInstance().getAttendanceCount(emp.getId(), month, year); txtCongT2T6.setText(String.valueOf(counts[0])); txtCongCuoiTuan.setText(String.valueOf(counts[1]));
+        DefaultTableModel m = new DefaultTableModel(new String[]{"Nhân viên", "Tháng", "Công Hệ số 1", "Công Hệ số 2", "Tiền Thưởng", "Thực lĩnh"}, 0); 
+        JTable t = new JTable(m); t.setRowHeight(30); 
+        t.getTableHeader().setReorderingAllowed(false); // CHẶN DI CHUYỂN CỘT
+        gbc.gridx = 1; gbc.weightx = 0.7; content.add(new JScrollPane(t), gbc);
+        
+        Runnable autoFillDaysAndKPI = () -> {
+            if (isRefreshing) return; int idx = cbNhanVienTinhLuong.getSelectedIndex(); if(idx == -1) return; 
+            Employee emp = EmployeeManager.getInstance().getAllEmployees().get(idx); 
+            int month = (Integer) cbMonth.getSelectedItem(); 
+            int year = (Integer) cbYear.getSelectedItem(); 
+            int[] counts = EmployeeManager.getInstance().getAttendanceCount(emp.getId(), month, year); 
+            txtCongT2T6.setText(String.valueOf(counts[0])); 
+            txtCongCuoiTuan.setText(String.valueOf(counts[1]));
+            
+            int kpi = EmployeeManager.getInstance().getKPI(emp.getId(), month, year);
+            double bonus = 0;
+            if(kpi >= 90) bonus = 1000000;
+            else if(kpi >= 80) bonus = 500000;
+            else if(kpi >= 70) bonus = 200000;
+            txtBonus.setText(String.format("%.0f", bonus));
         };
-        cbNhanVienTinhLuong.addActionListener(e -> autoFillDays.run()); cbMonth.addActionListener(e -> autoFillDays.run()); cbYear.addActionListener(e -> autoFillDays.run());
+        
+        cbNhanVienTinhLuong.addActionListener(e -> autoFillDaysAndKPI.run()); 
+        cbMonth.addActionListener(e -> autoFillDaysAndKPI.run()); 
+        cbYear.addActionListener(e -> autoFillDaysAndKPI.run());
+        
         btnCal.addActionListener(e -> {
             try {
                 if(cbNhanVienTinhLuong.getSelectedIndex() == -1) return; Employee emp = EmployeeManager.getInstance().getAllEmployees().get(cbNhanVienTinhLuong.getSelectedIndex());
@@ -584,7 +925,7 @@ public class DashboardUI extends JFrame {
                 int congHeSo1 = ngayT2T6; int congHeSo2 = ngayCuoiTuan;
                 if (ngayT2T6 < 22) { int ngayThieu = 22 - ngayT2T6; if (ngayCuoiTuan <= ngayThieu) { congHeSo1 += ngayCuoiTuan; congHeSo2 = 0; } else { congHeSo1 = 22; congHeSo2 = ngayCuoiTuan - ngayThieu; } }
                 double luongMotNgay = emp.getBaseSalary() / 22.0; double thucLinh = (luongMotNgay * congHeSo1) + ((luongMotNgay * 2) * congHeSo2) + thuong;
-                m.addRow(new Object[]{emp.getName(), cbMonth.getSelectedItem() + "/" + cbYear.getSelectedItem(), congHeSo1, congHeSo2, String.format("%,.0f VNĐ", thucLinh)});
+                m.addRow(new Object[]{emp.getName(), cbMonth.getSelectedItem() + "/" + cbYear.getSelectedItem(), congHeSo1, congHeSo2, String.format("%,.0f", thuong), String.format("%,.0f VNĐ", thucLinh)});
             } catch(Exception ex) { JOptionPane.showMessageDialog(this, "Vui lòng nhập đúng định dạng số!"); }
         });
         p.add(content, BorderLayout.CENTER); return p;
@@ -592,12 +933,16 @@ public class DashboardUI extends JFrame {
 
     private void showEditSalaryDialog() {
         int r = tblNhanVien.getSelectedRow(); if(r == -1) return;
-        String id = tblNhanVien.getValueAt(r, 0).toString(); String s = JOptionPane.showInputDialog(this, "Nhập mức lương cơ bản mới cho NV " + id + ":");
+        int modelRow = tblNhanVien.convertRowIndexToModel(r);
+        String id = tblNhanVien.getModel().getValueAt(modelRow, 0).toString(); 
+        String s = JOptionPane.showInputDialog(this, "Nhập mức lương cơ bản mới cho NV " + id + ":");
         if(s != null && !s.isEmpty()) { try { EmployeeManager.getInstance().updateSalary(id, Double.parseDouble(s)); refreshData(); } catch (Exception e) {} }
     }
 
     private void deleteEmployee() {
-        int r = tblNhanVien.getSelectedRow(); if(r == -1) return; String id = tblNhanVien.getValueAt(r, 0).toString();
+        int r = tblNhanVien.getSelectedRow(); if(r == -1) return; 
+        int modelRow = tblNhanVien.convertRowIndexToModel(r);
+        String id = tblNhanVien.getModel().getValueAt(modelRow, 0).toString();
         if(JOptionPane.showConfirmDialog(this, "Xóa nhân viên " + id + "?") == JOptionPane.YES_OPTION) { EmployeeManager.getInstance().deleteEmployee(id); refreshData(); }
     }
 
@@ -609,7 +954,9 @@ public class DashboardUI extends JFrame {
         JButton btnApprove = new RoundedButton("✅ Duyệt & Phân phòng"); btnApprove.setBackground(new Color(16, 185, 129)); btnApprove.setForeground(Color.WHITE);
         btnReject.addActionListener(e -> rejectEmployee()); btnApprove.addActionListener(e -> showApproveDialog());
         btnGrp.add(btnReject); btnGrp.add(btnApprove); header.add(title, BorderLayout.WEST); header.add(btnGrp, BorderLayout.EAST); p.add(header, BorderLayout.NORTH);
-        tblXetDuyet = new JTable(new DefaultTableModel(new String[]{"Mã NV", "Họ Tên", "Tài khoản (App)", "Trạng thái"}, 0)); tblXetDuyet.setRowHeight(35); tblXetDuyet.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); p.add(new JScrollPane(tblXetDuyet), BorderLayout.CENTER); return p;
+        tblXetDuyet = new JTable(new DefaultTableModel(new String[]{"Mã NV", "Họ Tên", "Tài khoản (App)", "Trạng thái"}, 0)); tblXetDuyet.setRowHeight(35); tblXetDuyet.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); 
+        tblXetDuyet.getTableHeader().setReorderingAllowed(false); // CHẶN DI CHUYỂN CỘT
+        p.add(new JScrollPane(tblXetDuyet), BorderLayout.CENTER); return p;
     }
 
     private void loadPendingEmployees() {
@@ -663,12 +1010,66 @@ public class DashboardUI extends JFrame {
             List<Employee> list = EmployeeManager.getInstance().getAllEmployees();
             if (list == null || list.isEmpty()) return;
             double totalSalary = 0; for (Employee e : list) totalSalary += e.getBaseSalary(); if (totalSalary == 0) return;
-            int width = getWidth(); int height = getHeight(); int pieSize = Math.min(width, height) - 60; int x = 40; int y = (height - pieSize) / 2; int startAngle = 0; int colorIndex = 0; int legendX = x + pieSize + 50; int legendY = y + 20; g2d.setFont(new Font("Tahoma", Font.PLAIN, 12));
+            int width = getWidth(); int height = getHeight(); 
+            int pieSize = Math.min(width/2 + 20, height - 40); 
+            int x = 20; int y = (height - pieSize) / 2; int startAngle = 0; int colorIndex = 0; 
+            int legendX = x + pieSize + 20; int legendY = y + 20; g2d.setFont(new Font("Tahoma", Font.PLAIN, 12));
             for (Employee e : list) {
                 double empSalary = e.getBaseSalary(); if (empSalary <= 0) continue;
                 int arcAngle = (int) Math.round((empSalary / totalSalary) * 360); g2d.setColor(PIE_COLORS[colorIndex % PIE_COLORS.length]); g2d.fillArc(x, y, pieSize, pieSize, startAngle, arcAngle);
-                g2d.fillRect(legendX, legendY, 15, 15); g2d.setColor(TEXT_PRIMARY); String legendText = String.format("%s (%.1f%%)", e.getName(), (empSalary / totalSalary) * 100); g2d.drawString(legendText, legendX + 25, legendY + 12);
+                g2d.fillRect(legendX, legendY, 15, 15); g2d.setColor(TEXT_PRIMARY); 
+                String legendText = String.format("%s (%.1f%%)", e.getName(), (empSalary / totalSalary) * 100); 
+                if (legendText.length() > 20) legendText = legendText.substring(0, 18) + "..";
+                g2d.drawString(legendText, legendX + 25, legendY + 12);
                 startAngle += arcAngle; legendY += 25; colorIndex++;
+            }
+        }
+    }
+
+    class CustomBarChart extends JPanel {
+        public CustomBarChart() { setBackground(BG_CARD); }
+        @Override protected void paintComponent(Graphics g) {
+            super.paintComponent(g); Graphics2D g2d = (Graphics2D) g; g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            List<Employee> list = EmployeeManager.getInstance().getAllEmployees();
+            if (list == null || list.isEmpty()) return;
+            
+            java.util.Map<String, Integer> depMap = new java.util.HashMap<>();
+            for(Employee e : list) {
+                String dep = e.getDepartment();
+                if(dep == null || dep.trim().isEmpty()) dep = "Chưa rõ";
+                depMap.put(dep, depMap.getOrDefault(dep, 0) + 1);
+            }
+            
+            int width = getWidth(); int height = getHeight(); int padding = 40;
+            g2d.setColor(TEXT_SECONDARY); g2d.setStroke(new BasicStroke(2));
+            g2d.drawLine(padding, padding, padding, height - padding); 
+            g2d.drawLine(padding, height - padding, width - padding, height - padding); 
+            
+            int max = 1; for(int v : depMap.values()) if(v > max) max = v;
+            int numBars = depMap.size();
+            int barWidth = Math.min(50, (width - 2 * padding) / (numBars * 2 + 1)); 
+            if (barWidth < 10) barWidth = 10;
+            int spacing = (width - 2 * padding - (numBars * barWidth)) / (numBars + 1);
+            
+            int x = padding + spacing; int colorIndex = 0;
+            Color[] colors = { new Color(16, 185, 129), new Color(59, 130, 246), new Color(245, 158, 11), new Color(139, 92, 246), new Color(239, 68, 68) };
+            
+            for(java.util.Map.Entry<String, Integer> entry : depMap.entrySet()) {
+                int val = entry.getValue();
+                int barHeight = (int) (((double) val / max) * (height - 2 * padding - 30));
+                int y = height - padding - barHeight;
+                g2d.setColor(colors[colorIndex % colors.length]);
+                g2d.fillRoundRect(x, y, barWidth, barHeight, 8, 8);
+                g2d.setColor(TEXT_PRIMARY); g2d.setFont(new Font("Tahoma", Font.BOLD, 12));
+                String valStr = String.valueOf(val);
+                int strW = g2d.getFontMetrics().stringWidth(valStr);
+                g2d.drawString(valStr, x + (barWidth - strW)/2, y - 5);
+                g2d.setColor(TEXT_SECONDARY); g2d.setFont(new Font("Tahoma", Font.PLAIN, 11));
+                String name = entry.getKey();
+                if(name.length() > 8) name = name.substring(0, 7) + "..";
+                int nameW = g2d.getFontMetrics().stringWidth(name);
+                g2d.drawString(name, x + (barWidth - nameW)/2, height - padding + 15);
+                x += barWidth + spacing; colorIndex++;
             }
         }
     }
@@ -686,6 +1087,8 @@ public class DashboardUI extends JFrame {
             else if (type == 6) { g2d.fillOval(cx-6, cy-8, 6, 6); g2d.fillArc(cx-10, cy+1, 14, 12, 0, 180); g2d.setColor(new Color(16, 185, 129)); g2d.setStroke(new BasicStroke(2)); g2d.drawLine(cx+2, cy+2, cx+5, cy+6); g2d.drawLine(cx+5, cy+6, cx+10, cy-2); } 
             else if (type == 7) { g2d.fillPolygon(new int[]{cx-4, cx, cx+4, cx+4, cx, cx-4}, new int[]{cy-3, cy-6, cy-6, cy+6, cy+6, cy+3}, 6); g2d.fillArc(cx+2, cy-3, 6, 6, -90, 180); g2d.fillRect(cx-6, cy-2, 2, 4); }
             else if (type == 8) { g2d.setStroke(new BasicStroke(2)); g2d.drawRoundRect(cx-7, cy-6, 14, 14, 3, 3); g2d.drawLine(cx-7, cy-1, cx+7, cy-1); g2d.drawLine(cx-3, cy-8, cx-3, cy-4); g2d.drawLine(cx+3, cy-8, cx+3, cy-4); }
+            else if (type == 9) { g2d.setStroke(new BasicStroke(2)); g2d.drawRect(cx-8, cy-8, 4, 4); g2d.drawLine(cx-1, cy-6, cx+7, cy-6); g2d.drawRect(cx-8, cy, 4, 4); g2d.drawLine(cx-1, cy+2, cx+7, cy+2); }
+            else if (type == 10) { g2d.setStroke(new BasicStroke(2)); g2d.drawLine(cx-8, cy+6, cx+8, cy+6); g2d.drawLine(cx-6, cy+6, cx-6, cy); g2d.drawLine(cx, cy+6, cx, cy-4); g2d.drawLine(cx+6, cy+6, cx+6, cy-8); }
             g2d.dispose();
         }
         @Override public int getIconWidth() { return width; }

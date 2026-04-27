@@ -3,7 +3,7 @@ package BaiTapLon;
 public class Employee {
     private String id;
     private String name;
-    private String department; // Thuộc tính mới: Phòng ban
+    private String department;
     private String position;
     private double baseSalary;
 
@@ -17,7 +17,7 @@ public class Employee {
 
     public String getId() { return id; }
     public String getName() { return name; }
-    public String getDepartment() { return department; } // Getter mới
+    public String getDepartment() { return department; }
     public String getPosition() { return position; }
     public double getBaseSalary() { return baseSalary; }
 }

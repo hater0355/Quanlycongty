@@ -4,15 +4,22 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.prefs.Preferences; 
 
 public class LoginUI extends JFrame {
     
     private CardLayout cardLayout;
     private JPanel mainPanel;
 
+    private final Color BG_COLOR = new Color(249, 250, 251);       
+    private final Color TEXT_PRIMARY = new Color(31, 41, 55);      
+    private final Color TEXT_SECONDARY = new Color(107, 114, 128); 
+    private final Color COLOR_LOGIN = new Color(37, 99, 235);      
+    private final Color COLOR_REGISTER = new Color(16, 185, 129);  
+
     public LoginUI() {
         setTitle("Hệ Thống Quản Lý Lương & Nhân Sự");
-        setSize(420, 550); 
+        setSize(450, 750); // Mở rộng chiều cao để chứa thêm form
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setResizable(false);
@@ -27,237 +34,256 @@ public class LoginUI extends JFrame {
         setVisible(true);
     }
 
-    // ==========================================
-    // 1. MÀN HÌNH ĐĂNG NHẬP
-    // ==========================================
     private JPanel createLoginCard() {
         JPanel panel = new JPanel(null);
-        panel.setBackground(new Color(18, 25, 35));
+        panel.setBackground(BG_COLOR);
 
         JLabel title = new JLabel("ĐĂNG NHẬP", SwingConstants.CENTER);
-        title.setBounds(0, 40, 420, 40);
-        title.setForeground(new Color(245, 158, 11)); 
+        title.setBounds(0, 50, 420, 40);
+        title.setForeground(COLOR_LOGIN); 
         title.setFont(new Font("Tahoma", Font.BOLD, 28));
 
         JLabel lblUser = new JLabel("Tên tài khoản:");
-        lblUser.setForeground(Color.LIGHT_GRAY);
-        lblUser.setBounds(60, 110, 300, 20);
-        JTextField txtUser = new JTextField();
-        txtUser.setBounds(60, 130, 300, 40);
+        lblUser.setForeground(TEXT_SECONDARY);
+        lblUser.setFont(new Font("Tahoma", Font.BOLD, 12));
+        lblUser.setBounds(60, 120, 300, 20);
+        RoundedTextField txtUser = new RoundedTextField();
+        txtUser.setBounds(60, 140, 300, 40);
+        txtUser.setBackground(Color.WHITE);
         
         JLabel lblPass = new JLabel("Mật khẩu:");
-        lblPass.setForeground(Color.LIGHT_GRAY);
-        lblPass.setBounds(60, 180, 300, 20);
-        JPasswordField txtPass = new JPasswordField();
-        txtPass.setBounds(60, 200, 300, 40);
+        lblPass.setForeground(TEXT_SECONDARY);
+        lblPass.setFont(new Font("Tahoma", Font.BOLD, 12));
+        lblPass.setBounds(60, 190, 300, 20);
+        RoundedPasswordField txtPass = new RoundedPasswordField(); 
+        txtPass.setBounds(60, 210, 255, 40);
+        txtPass.setBackground(Color.WHITE);
+        txtPass.setEchoChar('•'); 
 
-        JButton btnLogin = new JButton("Đăng nhập ngay");
-        btnLogin.setBounds(60, 270, 300, 45);
-        btnLogin.setBackground(new Color(245, 158, 11));
-        btnLogin.setForeground(Color.WHITE);
-        btnLogin.setFont(new Font("Tahoma", Font.BOLD, 14));
-        btnLogin.setFocusPainted(false);
-        btnLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        JLabel lblSwitch = new JLabel("Chưa có tài khoản? Đăng ký tại đây.", SwingConstants.CENTER);
-        lblSwitch.setBounds(0, 330, 420, 20);
-        lblSwitch.setForeground(new Color(59, 130, 246)); 
-        lblSwitch.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        lblSwitch.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                cardLayout.show(mainPanel, "Register");
+        RoundedButton btnShowPass = new RoundedButton("👁");
+        btnShowPass.setBounds(320, 210, 40, 40);
+        btnShowPass.setBackground(Color.WHITE);
+        btnShowPass.setForeground(TEXT_SECONDARY);
+        btnShowPass.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 14));
+        btnShowPass.addActionListener(e -> {
+            if (txtPass.getEchoChar() == (char) 0) {
+                txtPass.setEchoChar('•'); btnShowPass.setForeground(TEXT_SECONDARY);
+            } else {
+                txtPass.setEchoChar((char) 0); btnShowPass.setForeground(COLOR_LOGIN);
             }
         });
+
+        JCheckBox chkRemember = new JCheckBox("Nhớ mật khẩu");
+        chkRemember.setBounds(60, 255, 120, 20);
+        chkRemember.setOpaque(false);
+        chkRemember.setForeground(TEXT_SECONDARY);
+        chkRemember.setFont(new Font("Tahoma", Font.PLAIN, 12));
+        chkRemember.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // ĐÃ THÊM: Nút bấm QUÊN MẬT KHẨU
+        JLabel lblForgot = new JLabel("Quên mật khẩu?", SwingConstants.RIGHT);
+        lblForgot.setBounds(200, 255, 160, 20);
+        lblForgot.setFont(new Font("Tahoma", Font.ITALIC, 12));
+        lblForgot.setForeground(COLOR_LOGIN);
+        lblForgot.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lblForgot.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { showForgotPasswordDialog(); }
+        });
+
+        RoundedButton btnLogin = new RoundedButton("Đăng nhập ngay");
+        btnLogin.setBounds(60, 295, 300, 45);
+        btnLogin.setBackground(COLOR_LOGIN);
+        btnLogin.setForeground(Color.WHITE);
+        btnLogin.setFont(new Font("Tahoma", Font.BOLD, 15));
+
+        JLabel lblSwitch = new JLabel("Chưa có tài khoản? Đăng ký tại đây.", SwingConstants.CENTER);
+        lblSwitch.setBounds(0, 355, 420, 20);
+        lblSwitch.setFont(new Font("Tahoma", Font.PLAIN, 13));
+        lblSwitch.setForeground(COLOR_REGISTER); 
+        lblSwitch.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lblSwitch.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { cardLayout.show(mainPanel, "Register"); }
+        });
+
+        Preferences prefs = Preferences.userNodeForPackage(LoginUI.class);
+        String savedUser = prefs.get("savedUser", "");
+        String savedPass = prefs.get("savedPass", "");
+        if (!savedUser.isEmpty()) {
+            txtUser.setText(savedUser);
+            txtPass.setText(savedPass);
+            chkRemember.setSelected(true);
+        }
 
         btnLogin.addActionListener(e -> {
             String u = txtUser.getText().trim();
             String p = new String(txtPass.getPassword());
+            if (u.isEmpty() || p.isEmpty()) { JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!"); return; }
 
-            if (u.isEmpty() || p.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-
-            // Lấy chức vụ sau khi xác thực
             String role = EmployeeManager.getInstance().authenticateUser(u, p);
-            
             if (role != null) {
-                if (role.equals("ADMIN")) {
-                    new DashboardUI(); 
-                    dispose(); 
-                } else {
-                    // KIỂM TRA MẬT KHẨU MẶC ĐỊNH
+                if (chkRemember.isSelected()) { prefs.put("savedUser", u); prefs.put("savedPass", p); } 
+                else { prefs.remove("savedUser"); prefs.remove("savedPass"); }
+
+                if (role.equals("ADMIN")) { new DashboardUI(); dispose(); } 
+                else {
                     if (p.equals("123")) {
                         JPasswordField pf = new JPasswordField();
-                        int okCxl = JOptionPane.showConfirmDialog(this, pf, 
-                            "⚠️ YÊU CẦU BẢO MẬT\nĐây là tài khoản do Công ty cấp phát.\nVui lòng nhập mật khẩu mới của riêng bạn để tiếp tục:", 
-                            JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-                        
-                        if (okCxl == JOptionPane.OK_OPTION) {
+                        if (JOptionPane.showConfirmDialog(this, pf, "⚠️ Vui lòng nhập mật khẩu mới của riêng bạn để tiếp tục:", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
                             String newPass = new String(pf.getPassword());
-                            if (newPass.isEmpty() || newPass.equals("123")) {
-                                JOptionPane.showMessageDialog(this, "Mật khẩu mới không được để trống hoặc giống mật khẩu mặc định!");
-                                EmployeeManager.getInstance().logoutUser(); 
-                                return; // Vẫn ở lại màn hình Login
-                            }
-                            // Đổi mật khẩu
+                            if (newPass.isEmpty() || newPass.equals("123")) { JOptionPane.showMessageDialog(this, "Mật khẩu mới không được để trống!"); EmployeeManager.getInstance().logoutUser(); return; }
                             EmployeeManager.getInstance().changePassword(u, newPass);
-                            JOptionPane.showMessageDialog(this, "✅ Đổi mật khẩu thành công! Đang vào hệ thống...");
-                        } else {
-                            EmployeeManager.getInstance().logoutUser();
-                            return; // Người dùng bấm Hủy -> Không cho vào hệ thống
-                        }
+                            if (chkRemember.isSelected()) prefs.put("savedPass", newPass);
+                            JOptionPane.showMessageDialog(this, "✅ Đổi mật khẩu thành công!");
+                        } else { EmployeeManager.getInstance().logoutUser(); return; }
                     }
-                    
-                    new EmployeeDashboardUI();
-                    dispose(); 
+                    new EmployeeDashboardUI(); dispose(); 
                 }
-            } else {
-                JOptionPane.showMessageDialog(this, "Sai tài khoản hoặc mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
+            } else { JOptionPane.showMessageDialog(this, "Sai tài khoản hoặc mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE); }
         });
 
-        panel.add(title);
-        panel.add(lblUser); panel.add(txtUser);
-        panel.add(lblPass); panel.add(txtPass);
-        panel.add(btnLogin);
-        panel.add(lblSwitch);
-
+        panel.add(title); panel.add(lblUser); panel.add(txtUser); panel.add(lblPass); panel.add(txtPass);
+        panel.add(btnShowPass); panel.add(chkRemember); panel.add(lblForgot); panel.add(btnLogin); panel.add(lblSwitch);
         return panel;
     }
 
+    // ĐÃ THÊM: Hộp thoại nhập Email để khôi phục mật khẩu
+    private void showForgotPasswordDialog() {
+        JTextField txtUser = new JTextField();
+        JTextField txtEmail = new JTextField();
+        JPasswordField txtNewPass = new JPasswordField();
+
+        Object[] message = { "Tên tài khoản:", txtUser, "Email xác thực:", txtEmail, "Mật khẩu mới:", txtNewPass };
+        if (JOptionPane.showConfirmDialog(this, message, "Khôi phục mật khẩu", JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE) == JOptionPane.OK_OPTION) {
+            String user = txtUser.getText().trim();
+            String email = txtEmail.getText().trim();
+            String newPass = new String(txtNewPass.getPassword());
+
+            if (user.isEmpty() || email.isEmpty() || newPass.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!"); return;
+            }
+
+            if (EmployeeManager.getInstance().resetPassword(user, email, newPass)) {
+                JOptionPane.showMessageDialog(this, "✅ Cập nhật mật khẩu thành công! Vui lòng đăng nhập lại.");
+            } else {
+                JOptionPane.showMessageDialog(this, "❌ Sai tên tài khoản hoặc Email không khớp!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
     // ==========================================
-    // 2. MÀN HÌNH ĐĂNG KÝ (Có chọn loại tài khoản)
+    // 2. MÀN HÌNH ĐĂNG KÝ
     // ==========================================
     private JPanel createRegisterCard() {
         JPanel panel = new JPanel(null);
-        panel.setBackground(new Color(18, 25, 35));
+        panel.setBackground(BG_COLOR);
 
         JLabel title = new JLabel("TẠO TÀI KHOẢN", SwingConstants.CENTER);
-        title.setBounds(0, 20, 420, 40);
-        title.setForeground(new Color(16, 185, 129)); 
-        title.setFont(new Font("Tahoma", Font.BOLD, 28));
+        title.setBounds(0, 15, 420, 30);
+        title.setForeground(COLOR_REGISTER); 
+        title.setFont(new Font("Tahoma", Font.BOLD, 24));
 
+        int y = 50; 
         JLabel lblRole = new JLabel("Bạn là ai?");
-        lblRole.setForeground(Color.LIGHT_GRAY);
-        lblRole.setBounds(60, 80, 300, 20);
-        
+        lblRole.setForeground(TEXT_SECONDARY); lblRole.setFont(new Font("Tahoma", Font.BOLD, 12));
+        lblRole.setBounds(60, y, 300, 20); y += 20;
         JComboBox<String> cbRole = new JComboBox<>(new String[]{"Người Quản Lý (Tạo công ty)", "Nhân Viên (Xin việc)"});
-        cbRole.setBounds(60, 100, 300, 35);
+        cbRole.setBounds(60, y, 300, 35); cbRole.setBackground(Color.WHITE); y += 45;
 
-        JLabel lblUser = new JLabel("Tên tài khoản (Viết liền không dấu):");
-        lblUser.setForeground(Color.LIGHT_GRAY);
-        lblUser.setBounds(60, 140, 300, 20);
-        JTextField txtUser = new JTextField();
-        txtUser.setBounds(60, 160, 300, 35);
+        JLabel lblUser = new JLabel("Tên tài khoản:");
+        lblUser.setForeground(TEXT_SECONDARY); lblUser.setFont(new Font("Tahoma", Font.BOLD, 12));
+        lblUser.setBounds(60, y, 300, 20); y += 20;
+        RoundedTextField txtUser = new RoundedTextField();
+        txtUser.setBounds(60, y, 300, 35); txtUser.setBackground(Color.WHITE); y += 40;
         
-        JLabel lblFullName = new JLabel("Họ và Tên thật (Dành cho Nhân viên):");
-        lblFullName.setForeground(Color.GRAY);
-        lblFullName.setBounds(60, 200, 300, 20);
-        JTextField txtFullName = new JTextField();
-        txtFullName.setBounds(60, 220, 300, 35);
-        txtFullName.setEnabled(false); // Khóa lại vì mặc định đang chọn Quản lý
+        JLabel lblFullName = new JLabel("Họ và Tên:"); // ĐÃ MỞ CHO CẢ SẾP
+        lblFullName.setForeground(TEXT_SECONDARY); lblFullName.setFont(new Font("Tahoma", Font.BOLD, 12));
+        lblFullName.setBounds(60, y, 300, 20); y += 20;
+        RoundedTextField txtFullName = new RoundedTextField();
+        txtFullName.setBounds(60, y, 300, 35); txtFullName.setBackground(Color.WHITE); y += 40;
 
-        JLabel lblCode = new JLabel("Mã công ty (Dành cho Nhân viên):");
-        lblCode.setForeground(Color.GRAY);
-        lblCode.setBounds(60, 260, 300, 20);
-        JTextField txtCode = new JTextField();
-        txtCode.setBounds(60, 280, 300, 35);
-        txtCode.setEnabled(false); // Khóa lại vì mặc định đang chọn Quản lý
+        JLabel lblEmail = new JLabel("Email:");
+        lblEmail.setForeground(TEXT_SECONDARY); lblEmail.setFont(new Font("Tahoma", Font.BOLD, 12));
+        lblEmail.setBounds(60, y, 300, 20); y += 20;
+        RoundedTextField txtEmail = new RoundedTextField();
+        txtEmail.setBounds(60, y, 300, 35); txtEmail.setBackground(Color.WHITE); y += 40;
+
+        JLabel lblPhone = new JLabel("Số điện thoại:");
+        lblPhone.setForeground(TEXT_SECONDARY); lblPhone.setFont(new Font("Tahoma", Font.BOLD, 12));
+        lblPhone.setBounds(60, y, 300, 20); y += 20;
+        RoundedTextField txtPhone = new RoundedTextField();
+        txtPhone.setBounds(60, y, 300, 35); txtPhone.setBackground(Color.WHITE); y += 40;
+
+        JLabel lblCode = new JLabel("Mã công ty (Chỉ Nhân viên cần điền):");
+        lblCode.setForeground(new Color(200, 200, 200)); lblCode.setFont(new Font("Tahoma", Font.BOLD, 12));
+        lblCode.setBounds(60, y, 300, 20); y += 20;
+        RoundedTextField txtCode = new RoundedTextField();
+        txtCode.setBounds(60, y, 300, 35); txtCode.setBackground(Color.WHITE); txtCode.setEnabled(false); y += 40;
         
         JLabel lblPass = new JLabel("Mật khẩu:");
-        lblPass.setForeground(Color.LIGHT_GRAY);
-        lblPass.setBounds(60, 320, 300, 20);
-        JPasswordField txtPass = new JPasswordField();
-        txtPass.setBounds(60, 340, 300, 35);
+        lblPass.setForeground(TEXT_SECONDARY); lblPass.setFont(new Font("Tahoma", Font.BOLD, 12));
+        lblPass.setBounds(60, y, 300, 20); y += 20;
+        RoundedPasswordField txtPass = new RoundedPasswordField();
+        txtPass.setBounds(60, y, 300, 35); txtPass.setBackground(Color.WHITE); y += 40;
 
-        // --- SỰ KIỆN: Khi thay đổi Role (Quản lý / Nhân viên) ---
+        JLabel lblConfirmPass = new JLabel("Xác nhận mật khẩu:");
+        lblConfirmPass.setForeground(TEXT_SECONDARY); lblConfirmPass.setFont(new Font("Tahoma", Font.BOLD, 12));
+        lblConfirmPass.setBounds(60, y, 300, 20); y += 20;
+        RoundedPasswordField txtConfirmPass = new RoundedPasswordField();
+        txtConfirmPass.setBounds(60, y, 300, 35); txtConfirmPass.setBackground(Color.WHITE); y += 50;
+
         cbRole.addActionListener(e -> {
             boolean isEmployee = cbRole.getSelectedIndex() == 1;
-            txtFullName.setEnabled(isEmployee);
             txtCode.setEnabled(isEmployee);
-            
-            // Đổi màu chữ label để báo hiệu ô nào đang được dùng
-            if (isEmployee) {
-                lblFullName.setForeground(Color.LIGHT_GRAY);
-                lblCode.setForeground(Color.LIGHT_GRAY);
-            } else {
-                lblFullName.setForeground(Color.GRAY);
-                lblCode.setForeground(Color.GRAY);
-                txtFullName.setText(""); // Xóa chữ nếu chuyển lại về quản lý
-                txtCode.setText("");
-            }
+            if (isEmployee) { lblCode.setForeground(TEXT_SECONDARY); } 
+            else { lblCode.setForeground(new Color(200, 200, 200)); txtCode.setText(""); }
         });
 
-        JButton btnRegister = new JButton("Hoàn tất đăng ký");
-        btnRegister.setBounds(60, 400, 300, 45);
-        btnRegister.setBackground(new Color(16, 185, 129));
-        btnRegister.setForeground(Color.WHITE);
-        btnRegister.setFont(new Font("Tahoma", Font.BOLD, 14));
-        btnRegister.setFocusPainted(false);
-        btnRegister.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        RoundedButton btnRegister = new RoundedButton("Hoàn tất đăng ký");
+        btnRegister.setBounds(60, y, 300, 45); y += 60;
+        btnRegister.setBackground(COLOR_REGISTER); btnRegister.setForeground(Color.WHITE); btnRegister.setFont(new Font("Tahoma", Font.BOLD, 15));
 
         JLabel lblSwitch = new JLabel("Đã có tài khoản? Quay lại Đăng nhập.", SwingConstants.CENTER);
-        lblSwitch.setBounds(0, 460, 420, 20);
-        lblSwitch.setForeground(new Color(59, 130, 246));
-        lblSwitch.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        lblSwitch.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                cardLayout.show(mainPanel, "Login");
-            }
-        });
+        lblSwitch.setBounds(0, y, 420, 20);
+        lblSwitch.setFont(new Font("Tahoma", Font.PLAIN, 13)); lblSwitch.setForeground(COLOR_LOGIN); lblSwitch.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lblSwitch.addMouseListener(new MouseAdapter() { @Override public void mouseClicked(MouseEvent e) { cardLayout.show(mainPanel, "Login"); } });
 
         btnRegister.addActionListener(e -> {
             String role = cbRole.getSelectedIndex() == 0 ? "ADMIN" : "EMPLOYEE";
             String u = txtUser.getText().trim();
+            String name = txtFullName.getText().trim();
+            String email = txtEmail.getText().trim();
+            String phone = txtPhone.getText().trim();
+            String code = txtCode.getText().trim();
             String p = new String(txtPass.getPassword());
+            String confirmP = new String(txtConfirmPass.getPassword());
 
-            if (u.isEmpty() || p.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng điền đủ Tên tài khoản và Mật khẩu!");
-                return;
+            if (u.isEmpty() || name.isEmpty() || email.isEmpty() || phone.isEmpty() || p.isEmpty() || confirmP.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng điền đầy đủ tất cả các trường!"); return;
+            }
+
+            if (!p.equals(confirmP)) {
+                JOptionPane.showMessageDialog(this, "Mật khẩu xác nhận không khớp!", "Lỗi", JOptionPane.ERROR_MESSAGE); return;
             }
 
             if (role.equals("ADMIN")) {
-                // Xử lý tạo Admin
-                if(EmployeeManager.getInstance().registerAdmin(u, p)) {
-                    JOptionPane.showMessageDialog(this, "Tạo tài khoản Quản lý thành công!\n(Bạn có thể lấy Mã công ty ở góc dưới bên trái màn hình làm việc)");
-                    cardLayout.show(mainPanel, "Login"); // Chuyển về màn login
-                } else {
-                    JOptionPane.showMessageDialog(this, "Tên tài khoản này đã có người sử dụng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                }
+                String result = EmployeeManager.getInstance().registerAdmin(u, p, name, email, phone);
+                if(result.equals("SUCCESS")) {
+                    JOptionPane.showMessageDialog(this, "Tạo tài khoản Quản lý thành công!\n(Mã công ty nằm ở góc dưới bên trái màn hình làm việc)");
+                    cardLayout.show(mainPanel, "Login"); 
+                } else { JOptionPane.showMessageDialog(this, result, "Lỗi", JOptionPane.ERROR_MESSAGE); }
             } else {
-                // Xử lý tạo Nhân viên xin việc
-                String name = txtFullName.getText().trim();
-                String code = txtCode.getText().trim();
-                
-                if (name.isEmpty() || code.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Nhân viên bắt buộc phải điền đủ Họ tên và Mã công ty giới thiệu!");
-                    return;
-                }
-
-                String result = EmployeeManager.getInstance().registerEmployee(u, p, name, code);
+                if (code.isEmpty()) { JOptionPane.showMessageDialog(this, "Nhân viên bắt buộc phải điền Mã công ty giới thiệu!"); return; }
+                String result = EmployeeManager.getInstance().registerEmployee(u, p, name, code, email, phone);
                 if (result.equals("SUCCESS")) {
-                    JOptionPane.showMessageDialog(this, "Đăng ký thành công!\n\nHồ sơ xin việc của bạn đã được gửi. Vui lòng chờ Giám đốc duyệt mới có thể hiển thị trong công ty.");
-                    cardLayout.show(mainPanel, "Login"); // Chuyển về màn login
-                } else {
-                    JOptionPane.showMessageDialog(this, result, "Lỗi đăng ký", JOptionPane.ERROR_MESSAGE);
-                }
+                    JOptionPane.showMessageDialog(this, "Đăng ký thành công!\nHồ sơ đã được gửi đi. Vui lòng chờ Giám đốc duyệt.");
+                    cardLayout.show(mainPanel, "Login"); 
+                } else { JOptionPane.showMessageDialog(this, result, "Lỗi", JOptionPane.ERROR_MESSAGE); }
             }
         });
 
-        panel.add(title);
-        panel.add(lblRole); panel.add(cbRole);
-        panel.add(lblUser); panel.add(txtUser);
-        panel.add(lblFullName); panel.add(txtFullName);
-        panel.add(lblCode); panel.add(txtCode);
-        panel.add(lblPass); panel.add(txtPass);
-        panel.add(btnRegister);
-        panel.add(lblSwitch);
-
+        panel.add(title); panel.add(lblRole); panel.add(cbRole); panel.add(lblUser); panel.add(txtUser); panel.add(lblFullName); panel.add(txtFullName);
+        panel.add(lblEmail); panel.add(txtEmail); panel.add(lblPhone); panel.add(txtPhone); panel.add(lblCode); panel.add(txtCode);
+        panel.add(lblPass); panel.add(txtPass); panel.add(lblConfirmPass); panel.add(txtConfirmPass); panel.add(btnRegister); panel.add(lblSwitch);
         return panel;
     }
 
