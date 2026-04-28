@@ -159,11 +159,23 @@ public class InternalChatPanel extends JPanel {
         new Timer(2000, e -> refreshChatHistory(false)).start();
     }
 
-    private void loadContacts() {
+private void loadContacts() {
         listModelContacts.clear();
         for (String[] g : EmployeeManager.getInstance().getMyGroups(myId)) {
             listModelContacts.addElement("[NHÓM] " + g[1] + " (ID:" + g[0] + ")");
         }
+
+        // ==========================================
+        // [ĐÃ SỬA]: LUÔN LUÔN GHIM SẾP LÊN ĐẦU DANH BẠ NHÂN VIÊN
+        // ==========================================
+        if ("EMPLOYEE".equals(EmployeeManager.getInstance().getCurrentUserRole())) {
+            String adminUser = EmployeeManager.getInstance().getMyAdminUsername();
+            if (adminUser != null) {
+                listModelContacts.addElement(adminUser + " - ⭐ Giám đốc (Sếp)");
+            }
+        }
+
+        // Hiện danh sách nhân viên / đồng nghiệp
         for (Employee e : EmployeeManager.getInstance().getAllEmployees()) {
             if (!e.getId().equals(myId)) {
                 listModelContacts.addElement(e.getId() + " - " + e.getName());
@@ -236,12 +248,23 @@ public class InternalChatPanel extends JPanel {
         }
     }
 
-    private void createGroupDialog() {
+private void createGroupDialog() {
         String name = JOptionPane.showInputDialog(this, "Nhập tên nhóm chat mới:");
         if (name == null || name.trim().isEmpty()) return;
         List<String> members = new ArrayList<>(); members.add(myId);
-        for(Employee e : EmployeeManager.getInstance().getAllEmployees()) { if(!e.getId().equals(myId)) members.add(e.getId()); }
-        EmployeeManager.getInstance().createGroup(name.trim(), myId, members); loadContacts(); JOptionPane.showMessageDialog(this, "Đã tạo nhóm thành công!");
+
+        // Kéo Sếp vào nhóm nếu mình là nhân viên tạo nhóm
+        if ("EMPLOYEE".equals(EmployeeManager.getInstance().getCurrentUserRole())) {
+            String adminUser = EmployeeManager.getInstance().getMyAdminUsername();
+            if (adminUser != null) members.add(adminUser); 
+        }
+
+        for(Employee e : EmployeeManager.getInstance().getAllEmployees()) { 
+            if(!e.getId().equals(myId)) members.add(e.getId()); 
+        }
+        EmployeeManager.getInstance().createGroup(name.trim(), myId, members); 
+        loadContacts(); 
+        JOptionPane.showMessageDialog(this, "Đã tạo nhóm thành công!");
     }
 
     // ==============================================================

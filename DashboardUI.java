@@ -1106,7 +1106,8 @@ public class DashboardUI extends JFrame {
         btnCheck.setBackground(Color.DARK_GRAY); 
         btnCheck.setForeground(Color.WHITE);
         
-        JButton btnApprove = new RoundedButton("✅ Duyệt nghỉ"); 
+        // ĐÂY LÀ CHỖ TÔI THÊM CHỮ "TRỪ QUỸ PHÉP" VÀO GIAO DIỆN GỐC CỦA BẠN
+        JButton btnApprove = new RoundedButton("✅ Duyệt nghỉ (Trừ Quỹ phép)"); 
         btnApprove.setBackground(new Color(16, 185, 129)); 
         btnApprove.setForeground(Color.WHITE);
         
