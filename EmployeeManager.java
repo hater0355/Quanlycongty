@@ -11,6 +11,8 @@ import java.time.format.DateTimeFormatter;
 
 public class EmployeeManager {
     private static EmployeeManager instance;
+    private String currentUsername = null;
+    private String currentUserRole = null; 
 
     private EmployeeManager() {
         try {
@@ -28,6 +30,9 @@ public class EmployeeManager {
         return instance;
     }
 
+    // =========================================================
+    // 1. QUẢN LÝ NHÂN VIÊN VÀ HỒ SƠ
+    // =========================================================
     public List<Employee> getAllEmployees() {
         List<Employee> list = new ArrayList<>();
         String sql = "SELECT * FROM employees WHERE account_username = ? AND status = 'APPROVED'";
@@ -35,10 +40,7 @@ public class EmployeeManager {
             pstmt.setString(1, currentUsername);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    list.add(new Employee(
-                        rs.getString("id"), rs.getString("name"), rs.getString("department"), 
-                        rs.getString("position"), rs.getDouble("baseSalary")
-                    ));
+                    list.add(new Employee(rs.getString("id"), rs.getString("name"), rs.getString("department"), rs.getString("position"), rs.getDouble("baseSalary")));
                 }
             }
         } catch (Exception e) { }
@@ -98,15 +100,14 @@ public class EmployeeManager {
         addEmployee(new Employee(empId, name, dep, pos, salary));
     }
 
+    // =========================================================
+    // 2. CHẤM CÔNG (THEO THỜI GIAN THỰC)
+    // =========================================================
     public void checkIn(String empId, LocalDate date, LocalTime time) {
         String sql = "INSERT INTO timekeeping (employee_id, work_date, check_in) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE check_in = VALUES(check_in)";
-        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt =prepareStatement(conn, sql)) {
+        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, empId); pstmt.setDate(2, java.sql.Date.valueOf(date)); pstmt.setTime(3, java.sql.Time.valueOf(time)); pstmt.executeUpdate();
         } catch (Exception e) {}
-    }
-
-    private PreparedStatement prepareStatement(Connection conn, String sql) throws SQLException {
-        return conn.prepareStatement(sql);
     }
 
     public void checkOut(String empId, LocalDate date, LocalTime time) {
@@ -141,6 +142,9 @@ public class EmployeeManager {
         } catch (Exception e) { } return counts;
     }
 
+    // =========================================================
+    // 3. QUẢN LÝ PHÒNG BAN
+    // =========================================================
     public void addDepartment(String name) {
         String sql = "INSERT INTO departments (name, account_username) VALUES (?, ?)";
         try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -163,8 +167,9 @@ public class EmployeeManager {
         if (list.isEmpty()) list.add("Chung"); return list;
     }
 
-    private String currentUsername = null;
-    private String currentUserRole = null; 
+    // =========================================================
+    // 4. QUẢN LÝ TÀI KHOẢN (ĐĂNG NHẬP, ĐĂNG KÝ)
+    // =========================================================
     public String getCurrentUsername() { return currentUsername; }
     public String getCurrentUserRole() { return currentUserRole; }
     public void logoutUser() { currentUsername = null; currentUserRole = null; }
@@ -220,13 +225,27 @@ public class EmployeeManager {
     
     public String getMyCompanyCode() {
         String sql = "SELECT company_code FROM users WHERE username = ?";
-        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt =prepareStatement(conn, sql)) {
             pstmt.setString(1, currentUsername); ResultSet rs = pstmt.executeQuery();
             if (rs.next()) return rs.getString("company_code");
         } catch (Exception e) {} return "N/A";
     }
 
-    public String applyNewJob(String fullName, String companyCode) { return "SUCCESS"; } 
+    private PreparedStatement prepareStatement(Connection conn, String sql) throws SQLException {
+        return conn.prepareStatement(sql);
+    }
+
+    public String applyNewJob(String fullName, String companyCode) {
+        String findBossSql = "SELECT username FROM users WHERE company_code = ? AND role = 'ADMIN'";
+        String insertEmpSql = "INSERT INTO employees (id, name, account_username, login_username, status) VALUES (?, ?, ?, ?, 'PENDING')";
+        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement findBossStmt = conn.prepareStatement(findBossSql); PreparedStatement insertEmpStmt = conn.prepareStatement(insertEmpSql)) {
+            findBossStmt.setString(1, companyCode); ResultSet rsBoss = findBossStmt.executeQuery(); if (!rsBoss.next()) return "Mã công ty không tồn tại!";
+            String bossUsername = rsBoss.getString("username");
+            String newEmployeeId = generateEmployeeId();
+            insertEmpStmt.setString(1, newEmployeeId); insertEmpStmt.setString(2, fullName); insertEmpStmt.setString(3, bossUsername); insertEmpStmt.setString(4, currentUsername); insertEmpStmt.executeUpdate();
+            return "SUCCESS";
+        } catch (Exception e) { return "Lỗi hệ thống: " + e.getMessage(); }
+    }
 
     public Employee getCurrentEmployeeProfile() {
         String sql = "SELECT * FROM employees WHERE login_username = ?";
@@ -244,6 +263,9 @@ public class EmployeeManager {
         } catch (Exception e) {} return "NO_JOB"; 
     }
 
+    // =========================================================
+    // 5. THÔNG BÁO VÀ LỊCH LÀM VIỆC (ĐĂNG KÝ CA)
+    // =========================================================
     public void sendNotification(String message) {
         String sql = "INSERT INTO notifications (account_username, message, created_at) VALUES (?, ?, ?)";
         try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -302,6 +324,9 @@ public class EmployeeManager {
         } return report;
     }
 
+    // =========================================================
+    // 6. GIAO VIỆC (TASKS)
+    // =========================================================
     public void addTask(String title, String description, String assigneeId, LocalDate deadline) {
         String sql = "INSERT INTO tasks (title, description, assignee_id, creator_username, deadline, status) VALUES (?, ?, ?, ?, ?, 'Chờ xử lý')";
         try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -340,30 +365,103 @@ public class EmployeeManager {
     }
 
     // =========================================================
-    // 12. TÍNH NĂNG MỚI: QUẢN LÝ KPI VÀ TÍNH THƯỞNG
+    // 7. KPI (ĐÁNH GIÁ HIỆU SUẤT)
     // =========================================================
     public void saveKPI(String empId, int month, int year, int score, String note) {
         String sql = "INSERT INTO kpi_records (employee_id, kpi_month, kpi_year, score, note) VALUES (?, ?, ?, ?, ?) " +
                      "ON DUPLICATE KEY UPDATE score = VALUES(score), note = VALUES(note)";
         try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, empId);
-            pstmt.setInt(2, month);
-            pstmt.setInt(3, year);
-            pstmt.setInt(4, score);
-            pstmt.setString(5, note);
-            pstmt.executeUpdate();
-        } catch (Exception e) { System.err.println("Lỗi lưu KPI: " + e.getMessage()); }
+            pstmt.setString(1, empId); pstmt.setInt(2, month); pstmt.setInt(3, year); pstmt.setInt(4, score); pstmt.setString(5, note); pstmt.executeUpdate();
+        } catch (Exception e) { }
     }
 
     public int getKPI(String empId, int month, int year) {
         String sql = "SELECT score FROM kpi_records WHERE employee_id = ? AND kpi_month = ? AND kpi_year = ?";
         try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, empId);
-            pstmt.setInt(2, month);
-            pstmt.setInt(3, year);
-            ResultSet rs = pstmt.executeQuery();
+            pstmt.setString(1, empId); pstmt.setInt(2, month); pstmt.setInt(3, year); ResultSet rs = pstmt.executeQuery();
             if (rs.next()) return rs.getInt("score");
         } catch (Exception e) {}
-        return 0; // Trả về 0 nếu chưa chấm
+        return 0; 
+    }
+
+    // =========================================================
+    // 8. HỆ THỐNG CHAT NỘI BỘ (TÍNH NĂNG MỚI ĐÃ ĐẠI TU)
+    // =========================================================
+
+    public void sendPrivateMessage(String senderId, String receiverId, String content) {
+        String sql = "INSERT INTO internal_messages (sender_id, receiver_id, content, is_group_msg) VALUES (?, ?, ?, false)";
+        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, senderId); pstmt.setString(2, receiverId); pstmt.setString(3, content); pstmt.executeUpdate();
+        } catch (Exception e) {}
+    }
+
+    public void sendGroupMessage(String senderId, int groupId, String content) {
+        String sql = "INSERT INTO internal_messages (sender_id, group_id, content, is_group_msg) VALUES (?, ?, ?, true)";
+        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, senderId); pstmt.setInt(2, groupId); pstmt.setString(3, content); pstmt.executeUpdate();
+        } catch (Exception e) {}
+    }
+
+    public List<String[]> getPrivateChatHistory(String user1, String user2) {
+        List<String[]> history = new ArrayList<>();
+        String sql = "SELECT sender_id, content, sent_at FROM internal_messages " +
+                     "WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) " +
+                     "AND is_group_msg = false ORDER BY sent_at ASC";
+        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, user1); pstmt.setString(2, user2); pstmt.setString(3, user2); pstmt.setString(4, user1);
+            ResultSet rs = pstmt.executeQuery();
+            while(rs.next()) {
+                history.add(new String[]{rs.getString("sender_id"), rs.getString("content"), rs.getTimestamp("sent_at").toString()});
+            }
+        } catch (Exception e) { }
+        return history;
+    }
+
+    public int createGroup(String groupName, String creatorId, List<String> memberIds) {
+        String sqlGroup = "INSERT INTO chat_groups (group_name, creator_id) VALUES (?, ?)";
+        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sqlGroup, Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setString(1, groupName); pstmt.setString(2, creatorId); pstmt.executeUpdate();
+            ResultSet rs = pstmt.getGeneratedKeys();
+            if(rs.next()) {
+                int groupId = rs.getInt(1);
+                String sqlMember = "INSERT INTO group_members (group_id, employee_id) VALUES (?, ?)";
+                try(PreparedStatement psMem = conn.prepareStatement(sqlMember)) {
+                    for(String mid : memberIds) { psMem.setInt(1, groupId); psMem.setString(2, mid); psMem.addBatch(); }
+                    psMem.executeBatch();
+                }
+                return groupId;
+            }
+        } catch (Exception e) { }
+        return -1;
+    }
+
+    public List<String[]> getMyGroups(String empId) {
+        List<String[]> groups = new ArrayList<>();
+        String sql = "SELECT g.id, g.group_name FROM chat_groups g JOIN group_members m ON g.id = m.group_id WHERE m.employee_id = ?";
+        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, empId); ResultSet rs = pstmt.executeQuery();
+            while(rs.next()) { groups.add(new String[]{rs.getString("id"), rs.getString("group_name")}); }
+        } catch (Exception e) { }
+        return groups;
+    }
+
+    // --- 2 HÀM MỚI ĐỂ SỬA / XÓA TIN NHẮN ---
+    public void editMessageById(String senderId, String sentAtStr, String newContent) {
+        String sql = "UPDATE internal_messages SET content = ? WHERE sender_id = ? AND sent_at = ?";
+        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, newContent);
+            pstmt.setString(2, senderId);
+            pstmt.setTimestamp(3, Timestamp.valueOf(sentAtStr)); // Định dạng Timestamp phải chuẩn yyyy-mm-dd hh:mm:ss.f
+            pstmt.executeUpdate();
+        } catch (Exception e) { System.out.println("Lỗi sửa tin nhắn: " + e.getMessage()); }
+    }
+
+    public void deleteMessageById(String senderId, String sentAtStr) {
+        String sql = "DELETE FROM internal_messages WHERE sender_id = ? AND sent_at = ?";
+        try (Connection conn = DatabaseHelper.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, senderId);
+            pstmt.setTimestamp(2, Timestamp.valueOf(sentAtStr));
+            pstmt.executeUpdate();
+        } catch (Exception e) { System.out.println("Lỗi xóa tin nhắn: " + e.getMessage()); }
     }
 }

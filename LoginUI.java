@@ -287,7 +287,14 @@ public class LoginUI extends JFrame {
         return panel;
     }
 
-    public static void main(String[] args) {
+public static void main(String[] args) {
+        // KÍCH HOẠT GIAO DIỆN FLATLAF HIỆN ĐẠI
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ex) {
+            System.err.println("Không thể khởi tạo FlatLaf");
+        }
+        
         SwingUtilities.invokeLater(() -> new LoginUI());
     }
 }

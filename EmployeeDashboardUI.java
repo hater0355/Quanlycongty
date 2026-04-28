@@ -13,10 +13,6 @@ import java.util.List;
 
 public class EmployeeDashboardUI extends JFrame {
 
-    public static boolean isDarkMode = false; 
-
-    private Color BG_SIDEBAR, BG_MAIN, BG_CARD, TEXT_PRIMARY, TEXT_SECONDARY;
-    private final Color COLOR_ORANGE = new Color(245, 158, 11);
     private final int SIDEBAR_WIDTH = 280; 
 
     private JPanel mainCardPanel;
@@ -36,20 +32,16 @@ public class EmployeeDashboardUI extends JFrame {
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        if (isDarkMode) {
-            BG_SIDEBAR = new Color(26, 34, 44); BG_MAIN = new Color(17, 24, 39); BG_CARD = new Color(31, 41, 55);
-            TEXT_PRIMARY = new Color(243, 244, 246); TEXT_SECONDARY = new Color(156, 163, 175); 
-        } else {
-            BG_SIDEBAR = new Color(243, 244, 246); BG_MAIN = new Color(255, 255, 255); BG_CARD = new Color(249, 250, 251); 
-            TEXT_PRIMARY = new Color(17, 24, 39); TEXT_SECONDARY = new Color(107, 114, 128); 
-        }
-
         myProfile = EmployeeManager.getInstance().getCurrentEmployeeProfile();
         myStatus = EmployeeManager.getInstance().getCurrentEmployeeStatus();
 
-        JPanel root = new JPanel(new BorderLayout()); root.setBackground(BG_MAIN); root.add(createSidebar(), BorderLayout.WEST);
+        JPanel root = new JPanel(new BorderLayout()); 
+        root.setBackground(ThemeManager.BG_MAIN); 
+        root.add(createSidebar(), BorderLayout.WEST);
 
-        cardLayout = new CardLayout(); mainCardPanel = new JPanel(cardLayout); mainCardPanel.setOpaque(false);
+        cardLayout = new CardLayout(); 
+        mainCardPanel = new JPanel(cardLayout); 
+        mainCardPanel.setOpaque(false);
 
         if ("NO_JOB".equals(myStatus)) { mainCardPanel.add(createNoJobPanel(), "NoJob"); } 
         else if ("PENDING".equals(myStatus)) { mainCardPanel.add(createPendingPanel(), "Pending"); } 
@@ -57,80 +49,186 @@ public class EmployeeDashboardUI extends JFrame {
             mainCardPanel.add(createTongQuanPanel(), "TongQuan");
             mainCardPanel.add(createThongBaoPanel(), "ThongBao");     
             mainCardPanel.add(createDangKyLichPanel(), "DangKyLich"); 
-            mainCardPanel.add(createChamCongPanel(), "ChamCong");
-            mainCardPanel.add(createTinhLuongPanel(), "TinhLuong");
             mainCardPanel.add(createCongViecPanel(), "CongViec"); 
+            mainCardPanel.add(createChamCongPanel(), "ChamCong"); 
+            mainCardPanel.add(createTinhLuongPanel(), "TinhLuong");
+            mainCardPanel.add(new InternalChatPanel(myProfile.getId()), "Chat");
         }
 
-        root.add(mainCardPanel, BorderLayout.CENTER); add(root); setVisible(true);
+        root.add(mainCardPanel, BorderLayout.CENTER); 
+        add(root); 
+        setVisible(true);
     }
 
     private JPanel createSidebar() {
-        JPanel sidebar = new JPanel(); sidebar.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 0)); sidebar.setBackground(BG_SIDEBAR); sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-        if (!isDarkMode) sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(229, 231, 235)));
+        JPanel sidebar = new JPanel(); 
+        sidebar.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 0)); 
+        sidebar.setBackground(ThemeManager.BG_SIDEBAR); 
+        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+        if (!ThemeManager.isDarkMode) sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(229, 231, 235)));
 
-        JLabel logo = new JLabel(" KHÔNG GIAN LÀM VIỆC"); logo.setForeground(COLOR_ORANGE); logo.setFont(new Font("Tahoma", Font.BOLD, 18)); logo.setBorder(BorderFactory.createEmptyBorder(40, 20, 40, 10)); logo.setAlignmentX(Component.LEFT_ALIGNMENT); sidebar.add(logo);
+        JLabel logo = new JLabel(" KHÔNG GIAN LÀM VIỆC"); 
+        logo.setForeground(ThemeManager.COLOR_ACCENT); // Dùng màu Theme
+        logo.setFont(new Font("Tahoma", Font.BOLD, 18)); 
+        logo.setBorder(BorderFactory.createEmptyBorder(40, 20, 40, 10)); 
+        logo.setAlignmentX(Component.LEFT_ALIGNMENT); 
+        sidebar.add(logo);
 
         if ("APPROVED".equals(myStatus)) {
             sidebar.add(createMenuBtn("Hồ sơ của tôi", "TongQuan", 1));
             sidebar.add(createMenuBtn("Thông báo", "ThongBao", 7));         
             sidebar.add(createMenuBtn("Lịch làm & Xin nghỉ", "DangKyLich", 8)); 
             sidebar.add(createMenuBtn("Công việc của tôi", "CongViec", 9)); 
+            sidebar.add(createMenuBtn("Nhắn tin nội bộ", "Chat", 11)); 
             sidebar.add(createMenuBtn("Chấm công hôm nay", "ChamCong", 3));
             sidebar.add(createMenuBtn("Bảng lương cá nhân", "TinhLuong", 4));
         }
         sidebar.add(Box.createVerticalGlue());
 
-        JPanel profilePanel = new JPanel(new BorderLayout(15, 0)); profilePanel.setBackground(BG_SIDEBAR); profilePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 65)); profilePanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20)); profilePanel.setAlignmentX(Component.LEFT_ALIGNMENT); profilePanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        JPanel profilePanel = new JPanel(new BorderLayout(15, 0)); 
+        profilePanel.setBackground(ThemeManager.BG_SIDEBAR); 
+        profilePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 65)); 
+        profilePanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20)); 
+        profilePanel.setAlignmentX(Component.LEFT_ALIGNMENT); 
+        profilePanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         String currentName = myProfile != null ? myProfile.getName() : EmployeeManager.getInstance().getCurrentUsername();
-        JLabel lblUser = new JLabel(currentName); lblUser.setForeground(TEXT_PRIMARY); lblUser.setFont(new Font("Tahoma", Font.BOLD, 15)); 
-        JLabel iconUser = new JLabel(new CustomMenuIcon(2)); JLabel lblMore = new JLabel("⋮"); lblMore.setForeground(TEXT_SECONDARY); lblMore.setFont(new Font("Tahoma", Font.BOLD, 20));
+        JLabel lblUser = new JLabel(currentName); 
+        lblUser.setForeground(ThemeManager.TEXT_PRIMARY); 
+        lblUser.setFont(new Font("Tahoma", Font.BOLD, 15)); 
+        JLabel iconUser = new JLabel(new CustomMenuIcon(2)); 
+        JLabel lblMore = new JLabel("⋮"); 
+        lblMore.setForeground(ThemeManager.TEXT_SECONDARY); 
+        lblMore.setFont(new Font("Tahoma", Font.BOLD, 20));
 
-        profilePanel.add(iconUser, BorderLayout.WEST); profilePanel.add(lblUser, BorderLayout.CENTER); profilePanel.add(lblMore, BorderLayout.EAST);
+        profilePanel.add(iconUser, BorderLayout.WEST); 
+        profilePanel.add(lblUser, BorderLayout.CENTER); 
+        profilePanel.add(lblMore, BorderLayout.EAST);
         profilePanel.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { profilePanel.setBackground(isDarkMode ? BG_CARD : new Color(229, 231, 235)); }
-            @Override public void mouseExited(MouseEvent e) { profilePanel.setBackground(BG_SIDEBAR); }
+            @Override public void mouseEntered(MouseEvent e) { profilePanel.setBackground(ThemeManager.isDarkMode ? ThemeManager.BG_CARD : new Color(229, 231, 235)); }
+            @Override public void mouseExited(MouseEvent e) { profilePanel.setBackground(ThemeManager.BG_SIDEBAR); }
             @Override public void mouseClicked(MouseEvent e) { showProfilePopup(profilePanel); }
         });
-        sidebar.add(profilePanel); return sidebar;
+        sidebar.add(profilePanel); 
+        return sidebar;
     }
 
     private void showProfilePopup(Component invoker) {
-        JPopupMenu popup = new JPopupMenu(); popup.setBackground(Color.WHITE); popup.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1)); 
-        JPanel header = new JPanel(new BorderLayout(15, 0)); header.setBackground(Color.WHITE); header.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        JPopupMenu popup = new JPopupMenu(); 
+        popup.setBackground(ThemeManager.BG_MAIN); 
+        popup.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1)); 
+        
+        JPanel header = new JPanel(new BorderLayout(15, 0)); 
+        header.setBackground(ThemeManager.BG_MAIN); 
+        header.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         JLabel lblAvatar = new JLabel("👤"); lblAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 36));
-        JPanel namePanel = new JPanel(new GridLayout(2, 1, 0, 5)); namePanel.setBackground(Color.WHITE);
-        JLabel lblName = new JLabel(myProfile != null ? myProfile.getName() : "Nhân viên"); lblName.setFont(new Font("Tahoma", Font.BOLD, 16)); lblName.setForeground(Color.BLACK);
-        JLabel lblRole = new JLabel(myProfile != null ? myProfile.getPosition() : "Nhân Viên"); lblRole.setFont(new Font("Tahoma", Font.PLAIN, 13)); lblRole.setForeground(Color.GRAY);
-        namePanel.add(lblName); namePanel.add(lblRole); header.add(lblAvatar, BorderLayout.WEST); header.add(namePanel, BorderLayout.CENTER); popup.add(header); popup.addSeparator();
+        JPanel namePanel = new JPanel(new GridLayout(2, 1, 0, 5)); 
+        namePanel.setBackground(ThemeManager.BG_MAIN);
+        JLabel lblName = new JLabel(myProfile != null ? myProfile.getName() : "Nhân viên"); 
+        lblName.setFont(new Font("Tahoma", Font.BOLD, 16)); 
+        lblName.setForeground(ThemeManager.TEXT_PRIMARY);
+        JLabel lblRole = new JLabel(myProfile != null ? myProfile.getPosition() : "Nhân Viên"); 
+        lblRole.setFont(new Font("Tahoma", Font.PLAIN, 13)); 
+        lblRole.setForeground(ThemeManager.TEXT_SECONDARY);
+        namePanel.add(lblName); namePanel.add(lblRole); 
+        header.add(lblAvatar, BorderLayout.WEST); 
+        header.add(namePanel, BorderLayout.CENTER); 
+        popup.add(header); popup.addSeparator();
 
-        JMenuItem itemTheme = new JMenuItem(isDarkMode ? "☀ Đổi sang Nền Sáng" : "🌙 Đổi sang Nền Tối"); itemTheme.setFont(new Font("Tahoma", Font.BOLD, 14)); itemTheme.setBackground(Color.WHITE); itemTheme.setForeground(new Color(59, 130, 246)); itemTheme.setBorder(BorderFactory.createEmptyBorder(12, 15, 12, 15)); itemTheme.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        itemTheme.addActionListener(e -> { isDarkMode = !isDarkMode; new EmployeeDashboardUI(); dispose(); }); popup.add(itemTheme); popup.addSeparator();
+        // NÚT CHỌN THEME MÀU SẮC
+        JMenuItem itemChangeColor = new JMenuItem("🎨 Đổi Màu Chủ Đạo"); 
+        itemChangeColor.setFont(new Font("Tahoma", Font.BOLD, 14)); 
+        itemChangeColor.setBackground(ThemeManager.BG_MAIN); 
+        itemChangeColor.setForeground(ThemeManager.COLOR_ACCENT); 
+        itemChangeColor.setBorder(BorderFactory.createEmptyBorder(12, 15, 12, 15)); 
+        itemChangeColor.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        itemChangeColor.addActionListener(e -> showThemeDialog()); 
+        popup.add(itemChangeColor);
 
-        JMenuItem itemLogout = new JMenuItem("🚪 Đăng xuất"); itemLogout.setFont(new Font("Tahoma", Font.BOLD, 14)); itemLogout.setBackground(Color.WHITE); itemLogout.setForeground(new Color(220, 38, 38)); itemLogout.setBorder(BorderFactory.createEmptyBorder(12, 15, 12, 15)); itemLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        itemLogout.addActionListener(e -> { if(JOptionPane.showConfirmDialog(this, "Đăng xuất khỏi hệ thống?", "Xác nhận", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) { EmployeeManager.getInstance().logoutUser(); new LoginUI(); dispose(); } }); popup.add(itemLogout);
-        popup.pack(); popup.show(invoker, 10, -popup.getHeight() - 5); 
+        JMenuItem itemTheme = new JMenuItem(ThemeManager.isDarkMode ? "☀ Đổi sang Nền Sáng" : "🌙 Đổi sang Nền Tối"); 
+        itemTheme.setFont(new Font("Tahoma", Font.BOLD, 14)); 
+        itemTheme.setBackground(ThemeManager.BG_MAIN); 
+        itemTheme.setForeground(ThemeManager.TEXT_PRIMARY); 
+        itemTheme.setBorder(BorderFactory.createEmptyBorder(12, 15, 12, 15)); 
+        itemTheme.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        itemTheme.addActionListener(e -> { ThemeManager.toggleDarkMode(); new EmployeeDashboardUI(); dispose(); }); 
+        popup.add(itemTheme); popup.addSeparator();
+
+        JMenuItem itemLogout = new JMenuItem("🚪 Đăng xuất"); 
+        itemLogout.setFont(new Font("Tahoma", Font.BOLD, 14)); 
+        itemLogout.setBackground(ThemeManager.BG_MAIN); 
+        itemLogout.setForeground(new Color(220, 38, 38)); 
+        itemLogout.setBorder(BorderFactory.createEmptyBorder(12, 15, 12, 15)); 
+        itemLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        itemLogout.addActionListener(e -> { if(JOptionPane.showConfirmDialog(this, "Đăng xuất khỏi hệ thống?", "Xác nhận", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) { EmployeeManager.getInstance().logoutUser(); new LoginUI(); dispose(); } }); 
+        popup.add(itemLogout);
+        
+        popup.pack(); 
+        popup.show(invoker, 10, -popup.getHeight() - 5); 
+    }
+
+    // BẢNG CHỌN MÀU
+    private void showThemeDialog() {
+        JDialog d = new JDialog(this, "Tùy chỉnh Màu sắc Giao diện", true);
+        d.setSize(400, 200);
+        d.setLocationRelativeTo(this);
+        d.setLayout(new BorderLayout());
+        d.getContentPane().setBackground(ThemeManager.BG_CARD);
+
+        JPanel pnlColors = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 20));
+        pnlColors.setOpaque(false);
+
+        Color[] accents = {
+            new Color(59, 130, 246),  // Xanh dương nhạt (Mặc định)
+            new Color(16, 185, 129),  // Xanh lá
+            new Color(245, 158, 11),  // Cam vàng
+            new Color(239, 68, 68),   // Đỏ Ruby
+            new Color(139, 92, 246),  // Tím đậm
+            new Color(236, 72, 153)   // Hồng phấn
+        };
+
+        for (Color c : accents) {
+            JButton btnColor = new JButton();
+            btnColor.setPreferredSize(new Dimension(45, 45));
+            btnColor.setBackground(c);
+            btnColor.setBorder(BorderFactory.createLineBorder(ThemeManager.TEXT_PRIMARY, 2));
+            btnColor.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            btnColor.addActionListener(e -> {
+                ThemeManager.setAccentColor(c);
+                new EmployeeDashboardUI(); // Khởi động lại giao diện ngay lập tức
+                this.dispose();
+                d.dispose();
+            });
+            pnlColors.add(btnColor);
+        }
+
+        JLabel lbl = new JLabel("Chọn màu chủ đạo yêu thích:", SwingConstants.CENTER);
+        lbl.setFont(new Font("Tahoma", Font.BOLD, 18));
+        lbl.setForeground(ThemeManager.TEXT_PRIMARY);
+        lbl.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+
+        d.add(lbl, BorderLayout.NORTH);
+        d.add(pnlColors, BorderLayout.CENTER);
+        d.setVisible(true);
     }
 
     private JButton createMenuBtn(String text, String cardName, int iconType) {
-        JButton btn = new RoundedButton("  " + text); btn.setIcon(new CustomMenuIcon(iconType)); btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50)); btn.setBackground(BG_SIDEBAR); btn.setForeground(TEXT_PRIMARY); btn.setBorderPainted(false); btn.setFocusPainted(false); btn.setHorizontalAlignment(SwingConstants.LEFT); btn.setAlignmentX(Component.LEFT_ALIGNMENT); btn.setFont(new Font("Tahoma", Font.PLAIN, 15)); btn.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20)); 
+        JButton btn = new RoundedButton("  " + text); btn.setIcon(new CustomMenuIcon(iconType)); btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50)); btn.setBackground(ThemeManager.BG_SIDEBAR); btn.setForeground(ThemeManager.TEXT_PRIMARY); btn.setBorderPainted(false); btn.setFocusPainted(false); btn.setHorizontalAlignment(SwingConstants.LEFT); btn.setAlignmentX(Component.LEFT_ALIGNMENT); btn.setFont(new Font("Tahoma", Font.PLAIN, 15)); btn.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20)); 
         btn.addActionListener(e -> cardLayout.show(mainCardPanel, cardName)); return btn;
     }
 
     private JPanel createCongViecPanel() {
         JPanel p = new JPanel(new BorderLayout(0, 20)); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
         JPanel header = new JPanel(new BorderLayout()); header.setOpaque(false);
-        JLabel title = new JLabel("Công việc được giao"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(TEXT_PRIMARY); header.add(title, BorderLayout.WEST);
+        JLabel title = new JLabel("Công việc được giao"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(ThemeManager.TEXT_PRIMARY); header.add(title, BorderLayout.WEST);
         JPanel btnGrp = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0)); btnGrp.setOpaque(false);
-        JButton btnInProgress = new RoundedButton("⏳ Đang làm"); btnInProgress.setBackground(new Color(59, 130, 246)); btnInProgress.setForeground(Color.WHITE);
+        JButton btnInProgress = new RoundedButton("⏳ Đang làm"); btnInProgress.setBackground(ThemeManager.COLOR_ACCENT); btnInProgress.setForeground(Color.WHITE);
         JButton btnComplete = new RoundedButton("✅ Hoàn thành"); btnComplete.setBackground(new Color(16, 185, 129)); btnComplete.setForeground(Color.WHITE);
         JButton btnRefresh = new RoundedButton("🔄 Làm mới"); btnRefresh.setBackground(Color.GRAY); btnRefresh.setForeground(Color.WHITE);
         btnGrp.add(btnRefresh); btnGrp.add(btnInProgress); btnGrp.add(btnComplete); header.add(btnGrp, BorderLayout.EAST); p.add(header, BorderLayout.NORTH);
 
         taskModel = new DefaultTableModel(new String[]{"Mã CV", "Tiêu đề", "Chi tiết", "Hạn chót", "Trạng thái"}, 0) { @Override public boolean isCellEditable(int row, int column) { return false; } };
-        tblTasks = new JTable(taskModel); tblTasks.setRowHeight(35);
-        tblTasks.getTableHeader().setReorderingAllowed(false); // CHẶN DI CHUYỂN CỘT
+        tblTasks = new JTable(taskModel); tblTasks.setRowHeight(35); tblTasks.getTableHeader().setReorderingAllowed(false);
         p.add(new JScrollPane(tblTasks), BorderLayout.CENTER);
 
         Runnable loadTasks = () -> {
@@ -149,12 +247,12 @@ public class EmployeeDashboardUI extends JFrame {
     private JPanel createDangKyLichPanel() {
         JPanel p = new JPanel(new BorderLayout(0, 15)); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
         JPanel header = new JPanel(new BorderLayout()); header.setOpaque(false);
-        JLabel title = new JLabel("Lịch làm việc & Xin nghỉ"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(TEXT_PRIMARY); header.add(title, BorderLayout.WEST);
+        JLabel title = new JLabel("Lịch làm việc & Xin nghỉ"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(ThemeManager.TEXT_PRIMARY); header.add(title, BorderLayout.WEST);
 
         JPanel navBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10)); navBar.setOpaque(false);
         JButton btnPrev = new RoundedButton("◀ Tháng trước"); JButton btnNext = new RoundedButton("Tháng sau ▶"); JButton btnToday = new RoundedButton("Tháng này");
-        btnPrev.setBackground(BG_CARD); btnPrev.setForeground(TEXT_PRIMARY); btnNext.setBackground(BG_CARD); btnNext.setForeground(TEXT_PRIMARY); btnToday.setBackground(COLOR_ORANGE); btnToday.setForeground(Color.WHITE);
-        lblMonthDisplay = new JLabel(); lblMonthDisplay.setFont(new Font("Tahoma", Font.BOLD, 18)); lblMonthDisplay.setForeground(COLOR_ORANGE);
+        btnPrev.setBackground(ThemeManager.BG_CARD); btnPrev.setForeground(ThemeManager.TEXT_PRIMARY); btnNext.setBackground(ThemeManager.BG_CARD); btnNext.setForeground(ThemeManager.TEXT_PRIMARY); btnToday.setBackground(ThemeManager.COLOR_ACCENT); btnToday.setForeground(Color.WHITE);
+        lblMonthDisplay = new JLabel(); lblMonthDisplay.setFont(new Font("Tahoma", Font.BOLD, 18)); lblMonthDisplay.setForeground(ThemeManager.COLOR_ACCENT);
 
         btnPrev.addActionListener(e -> { currentCalMonth = currentCalMonth.minusMonths(1); renderCalendarGrid(); });
         btnNext.addActionListener(e -> { currentCalMonth = currentCalMonth.plusMonths(1); renderCalendarGrid(); });
@@ -164,14 +262,14 @@ public class EmployeeDashboardUI extends JFrame {
         JPanel topContainer = new JPanel(new BorderLayout()); topContainer.setOpaque(false);
         topContainer.add(header, BorderLayout.NORTH); topContainer.add(navBar, BorderLayout.SOUTH); p.add(topContainer, BorderLayout.NORTH);
 
-        calendarGridPanel = new JPanel(new GridLayout(0, 7, 8, 8)); calendarGridPanel.setBackground(BG_MAIN);
+        calendarGridPanel = new JPanel(new GridLayout(0, 7, 8, 8)); calendarGridPanel.setBackground(ThemeManager.BG_MAIN);
         p.add(new JScrollPane(calendarGridPanel), BorderLayout.CENTER);
 
         JPanel legendPanel = new JPanel(new FlowLayout(FlowLayout.LEFT)); legendPanel.setOpaque(false);
-        JLabel l1 = new JLabel("🔵 Đã nhận ca   "); l1.setForeground(TEXT_SECONDARY);
-        JLabel l2 = new JLabel("🟡 Chờ Sếp duyệt   "); l2.setForeground(TEXT_SECONDARY);
-        JLabel l3 = new JLabel("🔴 Nghỉ CÓ phép   "); l3.setForeground(TEXT_SECONDARY);
-        JLabel l4 = new JLabel("⚫ Bị từ chối   "); l4.setForeground(TEXT_SECONDARY);
+        JLabel l1 = new JLabel("🔵 Đã nhận ca   "); l1.setForeground(ThemeManager.TEXT_SECONDARY);
+        JLabel l2 = new JLabel("🟡 Chờ Sếp duyệt   "); l2.setForeground(ThemeManager.TEXT_SECONDARY);
+        JLabel l3 = new JLabel("🔴 Nghỉ CÓ phép   "); l3.setForeground(ThemeManager.TEXT_SECONDARY);
+        JLabel l4 = new JLabel("⚫ Bị từ chối   "); l4.setForeground(ThemeManager.TEXT_SECONDARY);
         legendPanel.add(l1); legendPanel.add(l2); legendPanel.add(l3); legendPanel.add(l4);
         p.add(legendPanel, BorderLayout.SOUTH);
 
@@ -182,7 +280,7 @@ public class EmployeeDashboardUI extends JFrame {
         calendarGridPanel.removeAll();
         lblMonthDisplay.setText("Tháng " + currentCalMonth.getMonthValue() + " - " + currentCalMonth.getYear());
         String[] dayNames = {"CN", "T2", "T3", "T4", "T5", "T6", "T7"};
-        for (String day : dayNames) { JLabel lbl = new JLabel(day, SwingConstants.CENTER); lbl.setFont(new Font("Tahoma", Font.BOLD, 15)); lbl.setForeground(TEXT_SECONDARY); calendarGridPanel.add(lbl); }
+        for (String day : dayNames) { JLabel lbl = new JLabel(day, SwingConstants.CENTER); lbl.setFont(new Font("Tahoma", Font.BOLD, 15)); lbl.setForeground(ThemeManager.TEXT_SECONDARY); calendarGridPanel.add(lbl); }
 
         int offset = currentCalMonth.getDayOfWeek().getValue() % 7; 
         for (int i = 0; i < offset; i++) calendarGridPanel.add(new JLabel("")); 
@@ -200,15 +298,15 @@ public class EmployeeDashboardUI extends JFrame {
 
             JButton btnDay = new RoundedButton("<html><center>" + i + "<br><font size='2'>" + displayShift.split(" ")[0] + "</font></center></html>");
             btnDay.setFont(new Font("Tahoma", Font.BOLD, 14)); btnDay.setFocusPainted(false); btnDay.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            btnDay.setBorder(BorderFactory.createLineBorder(isDarkMode ? Color.DARK_GRAY : Color.LIGHT_GRAY));
+            btnDay.setBorder(BorderFactory.createLineBorder(ThemeManager.isDarkMode ? Color.DARK_GRAY : Color.LIGHT_GRAY));
 
             if (shift.startsWith("Chờ duyệt")) { btnDay.setBackground(new Color(245, 158, 11)); btnDay.setForeground(Color.WHITE); }
             else if (shift.startsWith("Đã duyệt")) { btnDay.setBackground(new Color(239, 68, 68)); btnDay.setForeground(Color.WHITE); } 
             else if (shift.startsWith("Từ chối")) { btnDay.setBackground(Color.GRAY); btnDay.setForeground(Color.WHITE); }
-            else if (!shift.equals("Nghỉ") && !shift.equals("Chưa đăng ký")) { btnDay.setBackground(new Color(59, 130, 246)); btnDay.setForeground(Color.WHITE); }
-            else { btnDay.setBackground(BG_CARD); btnDay.setForeground(TEXT_PRIMARY); } 
+            else if (!shift.equals("Nghỉ") && !shift.equals("Chưa đăng ký")) { btnDay.setBackground(ThemeManager.COLOR_ACCENT); btnDay.setForeground(Color.WHITE); }
+            else { btnDay.setBackground(ThemeManager.BG_CARD); btnDay.setForeground(ThemeManager.TEXT_PRIMARY); } 
 
-            if (date.equals(LocalDate.now())) btnDay.setBorder(BorderFactory.createLineBorder(COLOR_ORANGE, 3));
+            if (date.equals(LocalDate.now())) btnDay.setBorder(BorderFactory.createLineBorder(ThemeManager.COLOR_ACCENT, 3));
 
             btnDay.addActionListener(e -> showRegisterShiftDialog(date, shift));
             calendarGridPanel.add(btnDay);
@@ -219,41 +317,20 @@ public class EmployeeDashboardUI extends JFrame {
     }
 
     private void showRegisterShiftDialog(LocalDate date, String currentShift) {
-        // [ĐÃ SỬA]: Chặn đăng ký hoặc sửa lịch ở ngày trong quá khứ
-        if (date.isBefore(LocalDate.now())) {
-            JOptionPane.showMessageDialog(this, "Không thể đăng ký hoặc thay đổi lịch làm việc ở một ngày trong quá khứ!", "Lỗi", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
+        if (date.isBefore(LocalDate.now())) { JOptionPane.showMessageDialog(this, "Không thể đăng ký hoặc thay đổi lịch làm việc ở một ngày trong quá khứ!", "Lỗi", JOptionPane.WARNING_MESSAGE); return; }
+        if (currentShift.startsWith("Chờ duyệt") || currentShift.startsWith("Xin nghỉ")) { JOptionPane.showMessageDialog(this, "Đơn xin nghỉ của bạn đang chờ Sếp duyệt!"); return; }
 
-        if (currentShift.startsWith("Chờ duyệt") || currentShift.startsWith("Xin nghỉ")) {
-            JOptionPane.showMessageDialog(this, "Đơn xin nghỉ của bạn đang chờ Sếp duyệt!");
-            return;
-        }
-
-        // [ĐÃ SỬA]: Quy tắc ca 8 tiếng
         if (currentShift.startsWith("Ca Ngày") || currentShift.startsWith("Ca Đêm")) {
             String[] options = {"Xin nghỉ đột xuất", "Đóng"};
             int choice = JOptionPane.showOptionDialog(this, "Ngày " + date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " đang có ca làm.\nBạn muốn làm gì?", "Tùy chọn", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[1]);
-            
             if (choice == 0) {
                 String reason = JOptionPane.showInputDialog(this, "Nhập lý do xin nghỉ phép (Bắt buộc):");
-                if(reason != null && !reason.trim().isEmpty()) {
-                    EmployeeManager.getInstance().saveSchedule(myProfile.getId(), date, "Chờ duyệt nghỉ: " + reason);
-                    JOptionPane.showMessageDialog(this, "Đã gửi đơn xin phép! Vui lòng chờ Giám đốc duyệt.");
-                    renderCalendarGrid();
-                }
-            }
-            return;
+                if(reason != null && !reason.trim().isEmpty()) { EmployeeManager.getInstance().saveSchedule(myProfile.getId(), date, "Chờ duyệt nghỉ: " + reason); JOptionPane.showMessageDialog(this, "Đã gửi đơn xin phép! Vui lòng chờ Giám đốc duyệt."); renderCalendarGrid(); }
+            } return;
         }
 
-        // [ĐÃ SỬA]: Danh sách ca mới 8 tiếng
-        String[] options = {
-            "Ca Ngày (08:00 - 17:00, Nghỉ trưa 12h-13h)", 
-            "Ca Đêm (20:00 - 05:00, Nghỉ đêm 00h-01h)", 
-            "Nghỉ định kỳ"
-        };
+        String[] options = { "Ca Ngày (08:00 - 17:00, Nghỉ trưa 12h-13h)", "Ca Đêm (20:00 - 05:00, Nghỉ đêm 00h-01h)", "Nghỉ định kỳ" };
         JComboBox<String> cbShift = new JComboBox<>(options);
-        
         if (currentShift.equals("Nghỉ")) cbShift.setSelectedIndex(2);
 
         JPanel panel = new JPanel(new GridLayout(2, 1, 5, 5));
@@ -261,98 +338,62 @@ public class EmployeeDashboardUI extends JFrame {
         panel.add(cbShift);
 
         int result = JOptionPane.showConfirmDialog(this, panel, "Cập nhật Lịch", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        
         if (result == JOptionPane.OK_OPTION) {
             String shiftToSave = cbShift.getSelectedItem().toString();
-            
             if (cbShift.getSelectedIndex() <= 1) { 
-                LocalDate startOfWeek = date.with(DayOfWeek.MONDAY);
-                int workDays = 0;
-                for (int i = 0; i < 7; i++) {
-                    LocalDate d = startOfWeek.plusDays(i);
-                    if (!d.equals(date)) {
-                        String s = EmployeeManager.getInstance().getSchedule(myProfile.getId(), d);
-                        if (s.startsWith("Ca Ngày") || s.startsWith("Ca Đêm")) {
-                            workDays++;
-                        }
-                    }
-                }
-                if (workDays >= 5) {
-                    JOptionPane.showMessageDialog(this, "Bạn chỉ được đăng ký làm việc tối đa 5 ngày trong 1 tuần!", "Vượt quá số ngày", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
+                LocalDate startOfWeek = date.with(DayOfWeek.MONDAY); int workDays = 0;
+                for (int i = 0; i < 7; i++) { LocalDate d = startOfWeek.plusDays(i); if (!d.equals(date)) { String s = EmployeeManager.getInstance().getSchedule(myProfile.getId(), d); if (s.startsWith("Ca Ngày") || s.startsWith("Ca Đêm")) workDays++; } }
+                if (workDays >= 5) { JOptionPane.showMessageDialog(this, "Bạn chỉ được đăng ký làm việc tối đa 5 ngày trong 1 tuần!", "Vượt quá số ngày", JOptionPane.WARNING_MESSAGE); return; }
             }
-
             if (cbShift.getSelectedIndex() == 2) shiftToSave = "Nghỉ";
             EmployeeManager.getInstance().saveSchedule(myProfile.getId(), date, shiftToSave);
-            JOptionPane.showMessageDialog(this, "✅ Đã lưu lịch ca làm thành công!");
-            renderCalendarGrid(); 
+            JOptionPane.showMessageDialog(this, "✅ Đã lưu lịch ca làm thành công!"); renderCalendarGrid(); 
         }
     }
 
     private JPanel createChamCongPanel() {
         JPanel p = new JPanel(new BorderLayout(0, 20)); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        JLabel title = new JLabel("Chấm công ngày hôm nay"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(TEXT_PRIMARY); p.add(title, BorderLayout.NORTH);
+        JLabel title = new JLabel("Chấm công ngày hôm nay"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(ThemeManager.TEXT_PRIMARY); p.add(title, BorderLayout.NORTH);
 
         JPanel centerPanel = new JPanel(new GridBagLayout()); centerPanel.setOpaque(false);
-        JPanel card = new JPanel(); card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS)); card.setBackground(BG_CARD); card.setBorder(BorderFactory.createEmptyBorder(40, 50, 40, 50));
+        JPanel card = new JPanel(); card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS)); card.setBackground(ThemeManager.BG_CARD); card.setBorder(BorderFactory.createEmptyBorder(40, 50, 40, 50));
 
         LocalDate today = LocalDate.now(); DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        JLabel lblDate = new JLabel("Hôm nay: " + today.format(formatter)); lblDate.setFont(new Font("Tahoma", Font.BOLD, 20)); lblDate.setForeground(TEXT_PRIMARY); lblDate.setAlignmentX(Component.CENTER_ALIGNMENT);
-        JLabel lblTimeDisplay = new JLabel("Chưa chấm công"); lblTimeDisplay.setFont(new Font("Tahoma", Font.PLAIN, 16)); lblTimeDisplay.setForeground(COLOR_ORANGE); lblTimeDisplay.setAlignmentX(Component.CENTER_ALIGNMENT); lblTimeDisplay.setBorder(BorderFactory.createEmptyBorder(10, 0, 20, 0));
+        JLabel lblDate = new JLabel("Hôm nay: " + today.format(formatter)); lblDate.setFont(new Font("Tahoma", Font.BOLD, 20)); lblDate.setForeground(ThemeManager.TEXT_PRIMARY); lblDate.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        JLabel lblRealTimeClock = new JLabel(); lblRealTimeClock.setFont(new Font("Tahoma", Font.BOLD, 55)); lblRealTimeClock.setForeground(ThemeManager.COLOR_ACCENT); lblRealTimeClock.setAlignmentX(Component.CENTER_ALIGNMENT); lblRealTimeClock.setBorder(BorderFactory.createEmptyBorder(15, 0, 15, 0));
+        Timer clockTimer = new Timer(1000, e -> { lblRealTimeClock.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))); }); clockTimer.start(); lblRealTimeClock.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+
+        JLabel lblTimeDisplay = new JLabel("Chưa chấm công"); lblTimeDisplay.setFont(new Font("Tahoma", Font.PLAIN, 16)); lblTimeDisplay.setForeground(ThemeManager.TEXT_SECONDARY); lblTimeDisplay.setAlignmentX(Component.CENTER_ALIGNMENT); lblTimeDisplay.setBorder(BorderFactory.createEmptyBorder(10, 0, 20, 0));
 
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0)); btnPanel.setOpaque(false);
-        JButton btnCheckIn = new RoundedButton("🚪 Vào Ca (Check-in)"); btnCheckIn.setFont(new Font("Tahoma", Font.BOLD, 16)); btnCheckIn.setBackground(new Color(59, 130, 246)); btnCheckIn.setForeground(Color.WHITE); btnCheckIn.setFocusPainted(false); btnCheckIn.setPreferredSize(new Dimension(220, 50)); btnCheckIn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        JButton btnCheckIn = new RoundedButton("🚪 Vào Ca (Check-in)"); btnCheckIn.setFont(new Font("Tahoma", Font.BOLD, 16)); btnCheckIn.setBackground(ThemeManager.COLOR_ACCENT); btnCheckIn.setForeground(Color.WHITE); btnCheckIn.setFocusPainted(false); btnCheckIn.setPreferredSize(new Dimension(220, 50)); btnCheckIn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         JButton btnCheckOut = new RoundedButton("🏃 Tan Ca (Check-out)"); btnCheckOut.setFont(new Font("Tahoma", Font.BOLD, 16)); btnCheckOut.setBackground(new Color(16, 185, 129)); btnCheckOut.setForeground(Color.WHITE); btnCheckOut.setFocusPainted(false); btnCheckOut.setPreferredSize(new Dimension(220, 50)); btnCheckOut.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         String[] record = EmployeeManager.getInstance().getAttendanceRecord(myProfile.getId(), today);
-        
         if (record[0] == null) { btnCheckOut.setEnabled(false); btnCheckOut.setBackground(Color.GRAY); } 
         else if (record[1] == null) { lblTimeDisplay.setText("Giờ vào ca: " + record[0]); btnCheckIn.setText("✅ Đã Check-in"); btnCheckIn.setEnabled(false); btnCheckIn.setBackground(Color.GRAY); } 
         else { lblTimeDisplay.setText("Giờ làm việc: " + record[0] + " đến " + record[1]); btnCheckIn.setText("✅ Đã Check-in"); btnCheckOut.setText("✅ Đã Check-out"); btnCheckIn.setEnabled(false); btnCheckIn.setBackground(Color.GRAY); btnCheckOut.setEnabled(false); btnCheckOut.setBackground(Color.GRAY); }
 
         btnCheckIn.addActionListener(e -> {
             String shiftToday = EmployeeManager.getInstance().getSchedule(myProfile.getId(), today);
-            
-            // [ĐÃ SỬA]: Kiểm tra tên ca làm việc mới
-            if (!shiftToday.startsWith("Ca Ngày") && !shiftToday.startsWith("Ca Đêm")) {
-                JOptionPane.showMessageDialog(this, "Hôm nay bạn không có ca làm việc.\nVui lòng đăng ký lịch làm trước khi chấm công!", "Lỗi chấm công", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            LocalTime now = LocalTime.now();
-            int min = now.getMinute();
-            if (min > 0 && min <= 30) {
-                now = now.withMinute(30).withSecond(0).withNano(0);
-            } else if (min > 30) {
-                now = now.plusHours(1).withMinute(0).withSecond(0).withNano(0);
-            }
-
-            EmployeeManager.getInstance().checkIn(myProfile.getId(), today, now);
-            lblTimeDisplay.setText("Giờ vào ca: " + now.toString().substring(0, 5));
-            btnCheckIn.setText("✅ Đã Check-in"); btnCheckIn.setEnabled(false); btnCheckIn.setBackground(Color.GRAY);
-            btnCheckOut.setEnabled(true); btnCheckOut.setBackground(new Color(16, 185, 129));
-            JOptionPane.showMessageDialog(this, "Điểm danh vào ca thành công! Giờ được tính: " + now.toString().substring(0, 5));
+            if (!shiftToday.startsWith("Ca Ngày") && !shiftToday.startsWith("Ca Đêm")) { JOptionPane.showMessageDialog(this, "Hôm nay bạn không có ca làm việc.\nVui lòng đăng ký lịch làm trước khi chấm công!", "Lỗi chấm công", JOptionPane.ERROR_MESSAGE); return; }
+            LocalTime now = LocalTime.now(); int min = now.getMinute(); if (min > 0 && min <= 30) { now = now.withMinute(30).withSecond(0).withNano(0); } else if (min > 30) { now = now.plusHours(1).withMinute(0).withSecond(0).withNano(0); }
+            EmployeeManager.getInstance().checkIn(myProfile.getId(), today, now); lblTimeDisplay.setText("Giờ vào ca: " + now.toString().substring(0, 5)); btnCheckIn.setText("✅ Đã Check-in"); btnCheckIn.setEnabled(false); btnCheckIn.setBackground(Color.GRAY); btnCheckOut.setEnabled(true); btnCheckOut.setBackground(new Color(16, 185, 129)); JOptionPane.showMessageDialog(this, "Điểm danh vào ca thành công! Giờ được tính: " + now.toString().substring(0, 5));
         });
 
-        btnCheckOut.addActionListener(e -> {
-            LocalTime now = LocalTime.now();
-            EmployeeManager.getInstance().checkOut(myProfile.getId(), today, now);
-            lblTimeDisplay.setText("Giờ làm việc: " + record[0] + " đến " + now.toString().substring(0, 5));
-            btnCheckOut.setText("✅ Đã Check-out"); btnCheckOut.setEnabled(false); btnCheckOut.setBackground(Color.GRAY);
-            JOptionPane.showMessageDialog(this, "Điểm danh tan ca thành công. Chúc bạn nghỉ ngơi vui vẻ!");
-        });
+        btnCheckOut.addActionListener(e -> { LocalTime now = LocalTime.now(); EmployeeManager.getInstance().checkOut(myProfile.getId(), today, now); lblTimeDisplay.setText("Giờ làm việc: " + record[0] + " đến " + now.toString().substring(0, 5)); btnCheckOut.setText("✅ Đã Check-out"); btnCheckOut.setEnabled(false); btnCheckOut.setBackground(Color.GRAY); JOptionPane.showMessageDialog(this, "Điểm danh tan ca thành công. Chúc bạn nghỉ ngơi vui vẻ!"); });
 
         btnPanel.add(btnCheckIn); btnPanel.add(btnCheckOut);
-        card.add(lblDate); card.add(lblTimeDisplay); card.add(btnPanel); centerPanel.add(card); p.add(centerPanel, BorderLayout.CENTER); return p;
+        card.add(lblDate); card.add(lblRealTimeClock); card.add(lblTimeDisplay); card.add(btnPanel); centerPanel.add(card); p.add(centerPanel, BorderLayout.CENTER); return p;
     }
 
     private JPanel createNoJobPanel() {
-        JPanel p = new JPanel(new GridBagLayout()); p.setOpaque(false); JPanel card = new JPanel(); card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS)); card.setBackground(BG_CARD); card.setBorder(BorderFactory.createEmptyBorder(40, 50, 40, 50));
-        JLabel icon = new JLabel("💼"); icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 60)); icon.setAlignmentX(Component.CENTER_ALIGNMENT); JLabel title = new JLabel("Bắt đầu hành trình mới!"); title.setFont(new Font("Tahoma", Font.BOLD, 24)); title.setForeground(COLOR_ORANGE); title.setAlignmentX(Component.CENTER_ALIGNMENT); title.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
-        JLabel msg = new JLabel("<html><div style='text-align: center;'>Tài khoản của bạn hiện không trực thuộc Công ty nào.<br>Vui lòng nhập Mã Công Ty mới để nộp hồ sơ xin việc:</div></html>"); msg.setFont(new Font("Tahoma", Font.PLAIN, 16)); msg.setForeground(TEXT_PRIMARY); msg.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JPanel p = new JPanel(new GridBagLayout()); p.setOpaque(false); JPanel card = new JPanel(); card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS)); card.setBackground(ThemeManager.BG_CARD); card.setBorder(BorderFactory.createEmptyBorder(40, 50, 40, 50));
+        JLabel icon = new JLabel("💼"); icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 60)); icon.setAlignmentX(Component.CENTER_ALIGNMENT); JLabel title = new JLabel("Bắt đầu hành trình mới!"); title.setFont(new Font("Tahoma", Font.BOLD, 24)); title.setForeground(ThemeManager.COLOR_ACCENT); title.setAlignmentX(Component.CENTER_ALIGNMENT); title.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
+        JLabel msg = new JLabel("<html><div style='text-align: center;'>Tài khoản của bạn hiện không trực thuộc Công ty nào.<br>Vui lòng nhập Mã Công Ty mới để nộp hồ sơ xin việc:</div></html>"); msg.setFont(new Font("Tahoma", Font.PLAIN, 16)); msg.setForeground(ThemeManager.TEXT_PRIMARY); msg.setAlignmentX(Component.CENTER_ALIGNMENT);
         JPanel form = new JPanel(new GridLayout(2, 2, 10, 15)); form.setOpaque(false); form.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0)); form.setMaximumSize(new Dimension(400, 100));
-        JLabel lblName = new JLabel("Họ và Tên thật:"); lblName.setForeground(TEXT_PRIMARY); JTextField txtName = new RoundedTextField(); JLabel lblCode = new JLabel("Mã Công Ty:"); lblCode.setForeground(TEXT_PRIMARY); JTextField txtCode = new RoundedTextField();
+        JLabel lblName = new JLabel("Họ và Tên thật:"); lblName.setForeground(ThemeManager.TEXT_PRIMARY); JTextField txtName = new RoundedTextField(); JLabel lblCode = new JLabel("Mã Công Ty:"); lblCode.setForeground(ThemeManager.TEXT_PRIMARY); JTextField txtCode = new RoundedTextField();
         form.add(lblName); form.add(txtName); form.add(lblCode); form.add(txtCode);
         JButton btnApply = new RoundedButton("Nộp hồ sơ"); btnApply.setBackground(new Color(16, 185, 129)); btnApply.setForeground(Color.WHITE); btnApply.setFont(new Font("Tahoma", Font.BOLD, 14)); btnApply.setCursor(new Cursor(Cursor.HAND_CURSOR)); btnApply.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnApply.addActionListener(e -> { String name = txtName.getText().trim(); String code = txtCode.getText().trim(); if (name.isEmpty() || code.isEmpty()) { JOptionPane.showMessageDialog(this, "Vui lòng nhập đủ thông tin!"); return; } String res = EmployeeManager.getInstance().applyNewJob(name, code); if (res.equals("SUCCESS")) { JOptionPane.showMessageDialog(this, "Nộp đơn thành công! Vui lòng chờ Quản lý duyệt."); new EmployeeDashboardUI(); dispose(); } else { JOptionPane.showMessageDialog(this, res, "Lỗi", JOptionPane.ERROR_MESSAGE); } });
@@ -360,26 +401,26 @@ public class EmployeeDashboardUI extends JFrame {
     }
 
     private JPanel createPendingPanel() {
-        JPanel p = new JPanel(new GridBagLayout()); p.setOpaque(false); JPanel card = new JPanel(); card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS)); card.setBackground(BG_CARD); card.setBorder(BorderFactory.createEmptyBorder(40, 50, 40, 50));
-        JLabel icon = new JLabel("⏳"); icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 60)); icon.setAlignmentX(Component.CENTER_ALIGNMENT); JLabel title = new JLabel("Hồ sơ đang chờ duyệt!"); title.setFont(new Font("Tahoma", Font.BOLD, 24)); title.setForeground(COLOR_ORANGE); title.setAlignmentX(Component.CENTER_ALIGNMENT); title.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
-        JLabel msg = new JLabel("<html><div style='text-align: center;'>Giám đốc chưa phê duyệt hồ sơ xin việc của bạn.<br>Vui lòng liên hệ quản lý hoặc quay lại sau.</div></html>"); msg.setFont(new Font("Tahoma", Font.PLAIN, 16)); msg.setForeground(TEXT_PRIMARY); msg.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JPanel p = new JPanel(new GridBagLayout()); p.setOpaque(false); JPanel card = new JPanel(); card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS)); card.setBackground(ThemeManager.BG_CARD); card.setBorder(BorderFactory.createEmptyBorder(40, 50, 40, 50));
+        JLabel icon = new JLabel("⏳"); icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 60)); icon.setAlignmentX(Component.CENTER_ALIGNMENT); JLabel title = new JLabel("Hồ sơ đang chờ duyệt!"); title.setFont(new Font("Tahoma", Font.BOLD, 24)); title.setForeground(ThemeManager.COLOR_ACCENT); title.setAlignmentX(Component.CENTER_ALIGNMENT); title.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
+        JLabel msg = new JLabel("<html><div style='text-align: center;'>Giám đốc chưa phê duyệt hồ sơ xin việc của bạn.<br>Vui lòng liên hệ quản lý hoặc quay lại sau.</div></html>"); msg.setFont(new Font("Tahoma", Font.PLAIN, 16)); msg.setForeground(ThemeManager.TEXT_PRIMARY); msg.setAlignmentX(Component.CENTER_ALIGNMENT);
         card.add(icon); card.add(title); card.add(msg); p.add(card); return p;
     }
 
     private JPanel createTongQuanPanel() {
         JPanel p = new JPanel(new BorderLayout(20, 20)); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        JLabel title = new JLabel("Hồ sơ nhân viên"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(TEXT_PRIMARY); p.add(title, BorderLayout.NORTH);
-        JPanel infoCard = new JPanel(new GridLayout(5, 1, 10, 10)); infoCard.setBackground(BG_CARD); infoCard.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
+        JLabel title = new JLabel("Hồ sơ nhân viên"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(ThemeManager.TEXT_PRIMARY); p.add(title, BorderLayout.NORTH);
+        JPanel infoCard = new JPanel(new GridLayout(5, 1, 10, 10)); infoCard.setBackground(ThemeManager.BG_CARD); infoCard.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
         infoCard.add(createLabelInfo("Mã định danh (ID): ", myProfile.getId())); infoCard.add(createLabelInfo("Họ và Tên: ", myProfile.getName())); infoCard.add(createLabelInfo("Phòng ban: ", myProfile.getDepartment())); infoCard.add(createLabelInfo("Chức vụ: ", myProfile.getPosition())); infoCard.add(createLabelInfo("Lương cơ bản: ", String.format("%,.0f VNĐ", myProfile.getBaseSalary())));
         JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.LEFT)); wrapper.setOpaque(false); wrapper.add(infoCard); p.add(wrapper, BorderLayout.CENTER); return p;
     }
 
-    private JLabel createLabelInfo(String title, String value) { String color = isDarkMode ? "white" : "black"; JLabel lbl = new JLabel("<html><font color='#9CA3AF'>" + title + "</font> <font color='" + color + "'><b>" + value + "</b></font></html>"); lbl.setFont(new Font("Tahoma", Font.PLAIN, 18)); return lbl; }
+    private JLabel createLabelInfo(String title, String value) { String color = ThemeManager.isDarkMode ? "white" : "black"; JLabel lbl = new JLabel("<html><font color='#9CA3AF'>" + title + "</font> <font color='" + color + "'><b>" + value + "</b></font></html>"); lbl.setFont(new Font("Tahoma", Font.PLAIN, 18)); return lbl; }
 
     private JPanel createThongBaoPanel() {
         JPanel p = new JPanel(new BorderLayout(0, 20)); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        JLabel title = new JLabel("Thông báo từ Công ty"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(TEXT_PRIMARY); p.add(title, BorderLayout.NORTH);
-        JPanel listPanel = new JPanel(); listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS)); listPanel.setBackground(BG_CARD); listPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JLabel title = new JLabel("Thông báo từ Công ty"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(ThemeManager.TEXT_PRIMARY); p.add(title, BorderLayout.NORTH);
+        JPanel listPanel = new JPanel(); listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS)); listPanel.setBackground(ThemeManager.BG_CARD); listPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         String adminUser = EmployeeManager.getInstance().getMyAdminUsername(); List<String[]> notifs = EmployeeManager.getInstance().getNotifications(adminUser);
         if (notifs.isEmpty()) { listPanel.add(createNotifItem("📭 Chưa có thông báo nào từ Giám đốc.", "")); } 
         else { for(String[] n : notifs) { listPanel.add(createNotifItem("📌 " + n[1], n[0])); listPanel.add(Box.createRigidArea(new Dimension(0, 10))); } }
@@ -387,24 +428,24 @@ public class EmployeeDashboardUI extends JFrame {
     }
 
     private JPanel createNotifItem(String msg, String time) {
-        JPanel p = new JPanel(new BorderLayout(10, 10)); p.setBackground(isDarkMode ? new Color(55, 65, 81) : new Color(243, 244, 246)); p.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        JLabel lMsg = new JLabel(msg); lMsg.setFont(new Font("Tahoma", Font.BOLD, 14)); lMsg.setForeground(TEXT_PRIMARY); JLabel lTime = new JLabel(time); lTime.setFont(new Font("Tahoma", Font.ITALIC, 12)); lTime.setForeground(TEXT_SECONDARY);
+        JPanel p = new JPanel(new BorderLayout(10, 10)); p.setBackground(ThemeManager.isDarkMode ? new Color(55, 65, 81) : new Color(243, 244, 246)); p.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        JLabel lMsg = new JLabel(msg); lMsg.setFont(new Font("Tahoma", Font.BOLD, 14)); lMsg.setForeground(ThemeManager.TEXT_PRIMARY); JLabel lTime = new JLabel(time); lTime.setFont(new Font("Tahoma", Font.ITALIC, 12)); lTime.setForeground(ThemeManager.TEXT_SECONDARY);
         p.add(lMsg, BorderLayout.CENTER); p.add(lTime, BorderLayout.EAST); p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60)); return p;
     }
 
     private JPanel createTinhLuongPanel() {
         JPanel p = new JPanel(new BorderLayout(0, 20)); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        JLabel title = new JLabel("Phiếu lương cá nhân"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(TEXT_PRIMARY); p.add(title, BorderLayout.NORTH);
+        JLabel title = new JLabel("Phiếu lương cá nhân"); title.setFont(new Font("Tahoma", Font.BOLD, 26)); title.setForeground(ThemeManager.TEXT_PRIMARY); p.add(title, BorderLayout.NORTH);
         
-        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10)); controls.setBackground(BG_CARD);
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10)); controls.setBackground(ThemeManager.BG_CARD);
         JComboBox<Integer> cbMonth = new JComboBox<>(); for(int i=1; i<=12; i++) cbMonth.addItem(i); cbMonth.setSelectedItem(LocalDate.now().getMonthValue());
         JComboBox<Integer> cbYear = new JComboBox<>(); int curYear = LocalDate.now().getYear(); for(int i=curYear-2; i<=curYear+2; i++) cbYear.addItem(i); cbYear.setSelectedItem(curYear);
         
         DefaultTableModel m = new DefaultTableModel(new String[]{"Tháng/Năm", "Ngày thường (x1)", "Tăng ca (x2)", "Thưởng KPI", "Thực lĩnh"}, 0); 
         JTable tbl = new JTable(m); tbl.setRowHeight(35);
-        tbl.getTableHeader().setReorderingAllowed(false); // CHẶN DI CHUYỂN CỘT
+        tbl.getTableHeader().setReorderingAllowed(false);
         
-        JButton btnCal = new RoundedButton("Xem lương"); btnCal.setBackground(COLOR_ORANGE); btnCal.setForeground(Color.WHITE);
+        JButton btnCal = new RoundedButton("Xem lương"); btnCal.setBackground(ThemeManager.COLOR_ACCENT); btnCal.setForeground(Color.WHITE);
         btnCal.addActionListener(e -> { 
             m.setRowCount(0); 
             int month = (Integer) cbMonth.getSelectedItem(); 
@@ -429,7 +470,7 @@ public class EmployeeDashboardUI extends JFrame {
             m.addRow(new Object[]{ month + "/" + year, congHeSo1, congHeSo2, String.format("%,.0f VNĐ", bonus), String.format("%,.0f VNĐ", thucLinh) }); 
         });
         
-        JLabel lblM = new JLabel("Tháng:"); lblM.setForeground(TEXT_PRIMARY); JLabel lblY = new JLabel("Năm:"); lblY.setForeground(TEXT_PRIMARY);
+        JLabel lblM = new JLabel("Tháng:"); lblM.setForeground(ThemeManager.TEXT_PRIMARY); JLabel lblY = new JLabel("Năm:"); lblY.setForeground(ThemeManager.TEXT_PRIMARY);
         controls.add(lblM); controls.add(cbMonth); controls.add(lblY); controls.add(cbYear); controls.add(btnCal);
         JPanel centerP = new JPanel(new BorderLayout()); centerP.setOpaque(false); centerP.add(controls, BorderLayout.NORTH); centerP.add(new JScrollPane(tbl), BorderLayout.CENTER); p.add(centerP, BorderLayout.CENTER); return p;
     }
@@ -437,14 +478,15 @@ public class EmployeeDashboardUI extends JFrame {
     class CustomMenuIcon implements Icon {
         private final int type; private final int width = 24; private final int height = 24; public CustomMenuIcon(int type) { this.type = type; }
         @Override public void paintIcon(Component c, Graphics g, int x, int y) {
-            Graphics2D g2d = (Graphics2D) g.create(); g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); g2d.setColor(TEXT_PRIMARY); int cx = x + width / 2; int cy = y + height / 2;
+            Graphics2D g2d = (Graphics2D) g.create(); g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); g2d.setColor(ThemeManager.TEXT_PRIMARY); int cx = x + width / 2; int cy = y + height / 2;
             if (type == 1) { g2d.fillPolygon(new int[]{cx, cx+9, cx-9}, new int[]{cy-8, cy, cy}, 3); g2d.fillRect(cx-6, cy, 12, 9); } 
             else if (type == 2) { g2d.fillOval(cx-4, cy-8, 8, 8); g2d.fillArc(cx-8, cy+2, 16, 15, 0, 180); } 
-            else if (type == 3) { g2d.fillRoundRect(cx-8, cy-6, 16, 14, 4, 4); g2d.setColor(BG_SIDEBAR); g2d.fillRect(cx-8, cy-2, 16, 2); g2d.setColor(TEXT_PRIMARY); g2d.fillOval(cx-5, cy-9, 3, 4); g2d.fillOval(cx+2, cy-9, 3, 4); } 
-            else if (type == 4) { g2d.fillRoundRect(cx-7, cy-9, 14, 18, 4, 4); g2d.setColor(BG_SIDEBAR); g2d.fillRect(cx-4, cy-6, 8, 4); g2d.fillRect(cx-4, cy, 2, 2); g2d.fillRect(cx, cy, 2, 2); g2d.fillRect(cx+4, cy, 2, 2); g2d.fillRect(cx-4, cy+3, 2, 2); g2d.fillRect(cx, cy+3, 2, 2); g2d.fillRect(cx+4, cy+3, 2, 2); } 
+            else if (type == 3) { g2d.fillRoundRect(cx-8, cy-6, 16, 14, 4, 4); g2d.setColor(ThemeManager.BG_SIDEBAR); g2d.fillRect(cx-8, cy-2, 16, 2); g2d.setColor(ThemeManager.TEXT_PRIMARY); g2d.fillOval(cx-5, cy-9, 3, 4); g2d.fillOval(cx+2, cy-9, 3, 4); } 
+            else if (type == 4) { g2d.fillRoundRect(cx-7, cy-9, 14, 18, 4, 4); g2d.setColor(ThemeManager.BG_SIDEBAR); g2d.fillRect(cx-4, cy-6, 8, 4); g2d.fillRect(cx-4, cy, 2, 2); g2d.fillRect(cx, cy, 2, 2); g2d.fillRect(cx+4, cy, 2, 2); g2d.fillRect(cx-4, cy+3, 2, 2); g2d.fillRect(cx, cy+3, 2, 2); g2d.fillRect(cx+4, cy+3, 2, 2); } 
             else if (type == 7) { g2d.fillPolygon(new int[]{cx-4, cx, cx+4, cx+4, cx, cx-4}, new int[]{cy-3, cy-6, cy-6, cy+6, cy+6, cy+3}, 6); g2d.fillArc(cx+2, cy-3, 6, 6, -90, 180); g2d.fillRect(cx-6, cy-2, 2, 4); } 
             else if (type == 8) { g2d.setStroke(new BasicStroke(2)); g2d.drawRoundRect(cx-7, cy-6, 14, 14, 3, 3); g2d.drawLine(cx-7, cy-1, cx+7, cy-1); g2d.drawLine(cx-3, cy-8, cx-3, cy-4); g2d.drawLine(cx+3, cy-8, cx+3, cy-4); }
             else if (type == 9) { g2d.setStroke(new BasicStroke(2)); g2d.drawRect(cx-8, cy-8, 4, 4); g2d.drawLine(cx-1, cy-6, cx+7, cy-6); g2d.drawRect(cx-8, cy, 4, 4); g2d.drawLine(cx-1, cy+2, cx+7, cy+2); }
+            else if (type == 11) { g2d.setStroke(new BasicStroke(2)); g2d.drawRoundRect(cx-8, cy-6, 16, 10, 4, 4); g2d.fillPolygon(new int[]{cx-4, cx-8, cx-2}, new int[]{cy+2, cy+8, cy+4}, 3); }
             g2d.dispose();
         }
         @Override public int getIconWidth() { return width; } @Override public int getIconHeight() { return height; }
